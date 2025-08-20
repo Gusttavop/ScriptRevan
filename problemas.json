@@ -23,7 +23,7 @@
       "lembrete": false,
       "etiquetaInterna": "Lentidão - FTTH",
       "etiquetaExterna": "Lentidão",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Instabilidade no WI-FI",
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "fez contato para relatar lentidão em sua conexão recorrentemente. Após verificar as informações junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem.  Foram executados os procedimentos padrões conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que o problema continuar. Dessa forma, será gerado uma O.S. Para equipe verificar no local. Agendado conforme a disponibilidade do cliente."
@@ -51,7 +51,7 @@
       "lembrete": false,
       "etiquetaInterna": "Lentidão - FTTH",
       "etiquetaExterna": "Lentidão",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Instabilidade no WI-FI",
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "informa estar enfrentando lentidão. Após verificação, observa-se que o problema afeta todos os dispositivos. Eu menciono a intenção de atualizar a rede, no entanto, o cliente destaca que essa questão é recorrente e deseja que uma equipe externa conduza uma análise, uma vez que já havia contatado previamente sem sucesso. Diante da insatisfação do cliente e da constatação de que se trata de uma situação frequente ainda não atendida localmente, uma Ordem de Serviço (O.S.) vai ser aberta para resolver o problema e garantir a retenção do cliente. Agendado de acordo com a disponibilidade do cliente."
@@ -79,7 +79,7 @@
       "lembrete": false,
       "etiquetaInterna": "Quedas na conexão - FTTH",
       "etiquetaExterna": "Lentidão",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Instabilidade no WI-FI",
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "fez contato para relatar quedas de acesso em sua conexão. Após verificar as informações junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem, contudo limitava-se à rede Wi-Fi.  Foram executados os procedimentos padrões conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que o acesso continua instável, desta forma foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente."
@@ -107,7 +107,7 @@
       "lembrete": false,
       "etiquetaInterna": "Quedas na conexão - FTTH",
       "etiquetaExterna": "Lentidão",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Instabilidade no WI-FI",
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "informa estar enfrentando quedas de conexão. Após verificação, observa-se que o problema afeta todos os dispositivos e se restringe à rede sem fio. Eu menciono a intenção de atualizar a rede, no entanto, o cliente destaca que essa questão é recorrente e deseja que uma equipe externa conduza uma análise, uma vez que já havia contatado previamente sem sucesso. Diante da insatisfação do cliente e da constatação de que se trata de uma situação frequente ainda não atendida localmente, uma Ordem de Serviço (O.S.) vai ser aberta para resolver o problema e garantir a retenção do cliente. Agendado de acordo com a disponibilidade do cliente."
@@ -135,7 +135,7 @@
       "lembrete": false,
       "etiquetaInterna": "Sem acesso TP-LINK",
       "etiquetaExterna": "Sem acesso TP-LINK",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Sem acesso",
       "etiquetaExternaFallback": "Instabilidade TP-LINK",
       "mensagem": "fez contato para comunicar a ausência de acesso. Foi verificado que a ONU apresentava sinal e o roteador não estava gerenciando a conexão. Após verificar a conexão do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfiguração remota. Mesmo após a realização desses passos, não foi possível restabelecer o acesso, dessa forma foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente."
@@ -163,7 +163,7 @@
       "lembrete": false,
       "etiquetaInterna": "Sem acesso",
       "etiquetaExterna": "Sem acesso",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Sem sinal",
       "etiquetaExternaFallback": "Instabilidade TP-LINK",
       "mensagem": " fez contato relatando a falta de acesso. Após confirmar os dados com o cliente, perguntei se ele conseguia se conectar à rede Wi-Fi. Nesse sentido, constatou-se que ele consegue se conectar, mas recebe a mensagem 'sem conexão'. Foram executados os procedimentos padrões conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que continua sem acesso, desta forma foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente."
@@ -233,7 +233,7 @@
       "lembrete": false,
       "etiquetaInterna": "Sem acesso",
       "etiquetaExterna": "Sem acesso",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Sem sinal",
       "etiquetaExternaFallback": "Sem acesso",
       "mensagem": "relatou que estava sem conexão com a internet e que o nome da rede Wi-Fi não estava aparecendo. Após realizar algumas alterações na configuração da rede, a conexão foi restabelecida com o nome e senha originais. O usuário confirmou que a rede continua sem aparecer nos seus dispositivos, dessa forma, será encaminhado uma equipe ao local."
@@ -261,7 +261,7 @@
       "lembrete": false,
       "etiquetaInterna": "Ping alto",
       "etiquetaExterna": "Perda de pacotes",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Latência alta para servidor do jogo",
       "etiquetaExternaFallback": "Lentidão",
       "mensagem": "relatou problemas com alta latência (ping) ao jogar, mesmo utilizando uma conexão cabeada. Após confirmar as informações do titular, foi feita uma reconfiguração da rede e o cliente foi orientado a reiniciar o roteador. A latência continua superior a 80ms. Dessa forma, será aberto uma O.S. para analisar no local se há algum problema em nossa rede."
@@ -289,7 +289,7 @@
       "lembrete": false,
       "etiquetaInterna": "Ping alto",
       "etiquetaExterna": "Perda de pacotes",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Latência alta para servidor do jogo",
       "etiquetaExternaFallback": "Lentidão",
       "mensagem": "relatou problemas com alta latência (ping) ao jogar, mesmo utilizando uma conexão cabeada. Após confirmar as informações do titular, eu menciono a intenção de atualizar a rede, no entanto, o cliente destaca que essa questão é recorrente e deseja que uma equipe externa conduza uma análise, uma vez que já havia contatado previamente sem sucesso. Diante da insatisfação do cliente e da constatação de que se trata de uma situação frequente ainda não atendida localmente, uma Ordem de Serviço (O.S.) vai ser aberta para resolver o problema e garantir a retenção do cliente. Agendado de acordo com a disponibilidade do cliente."
@@ -373,7 +373,7 @@
       "lembrete": false,
       "etiquetaInterna": "Plano não chega o contratado - FTTH",
       "etiquetaExterna": "Plano não chega o contratado",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Lentidão",
       "etiquetaExternaFallback": "Lentidão",
       "mensagem": "informou estar enfrentando problemas de instabilidade, já que a velocidade do plano contratado não está sendo alcançada na rede cabeada. Verificado o sinal óptico de sua PON está dentro dos padrões. Executamos os procedimentos padrões, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o reinício do computador. Além disso, constatamos que a placa de rede é Gigabyte e o cabo de rede é CAT. 5E. Apesar dessas verificações, o teste adicional no velocímetro ainda indicou uma velocidade inferior à garantida. Diante disso, foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente."
@@ -429,7 +429,7 @@
       "lembrete": false,
       "etiquetaInterna": "Plano não chega o contratado - FTTH",
       "etiquetaExterna": "Plano não chega o contratado",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Lentidão",
       "etiquetaExternaFallback": "Lentidão",
       "mensagem": "relatou enfrentar problemas de instabilidade, pois a velocidade do plano contratado não está sendo alcançada na rede cabeada. Após verificar que o sinal óptico na sua PON está dentro dos padrões, realizamos os procedimentos padrão, conforme documentados nos registros de eventos, e recomendamos alguns procedimentos manuais usuais, incluindo o reinício do computador. Após essas verificações, realizamos um teste adicional no velocímetro; no entanto, a velocidade continuou na mesma média de 90 Mbps. O cliente deseja a visita de uma equipe para confirmar que está recebendo o serviço contratado. Diante disso, geramos uma Ordem de Serviço (O.S.) para realizar uma inspeção presencial no local. Agendado de acordo com a disponibilidade do cliente."
@@ -457,7 +457,7 @@
       "lembrete": false,
       "etiquetaInterna": "Plano não chega o contratado - FTTH",
       "etiquetaExterna": "Plano não chega o contratado",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Instabilidade no WI-FI",
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "relatou enfrentar problemas de instabilidade, pois a velocidade do plano contratado não está sendo alcançada na rede sem fio. Verificado o sinal óptico de sua PON estava dentro dos padrões. Nesse contexto, explicamos sobre a garantia de entrega de velocidade apenas na rede cabeada e oferecemos um procedimento remoto para tentar melhorar, embora não pudéssemos garantir o mesmo desempenho na rede sem fio. Procedemos à execução dos procedimentos padrões, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o reinício do aparelho usado para testar. Apesar dessas verificações, o teste no velocímetro ainda indicou uma velocidade inferior à garantida. Diante dessa situação, o cliente solicitou a presença de uma equipe no local, com um notebook e cabo de rede da Brisanet para uma inspeção direta e comprovação da entrega do plano. Foi gerada uma Ordem de Serviço (O.S.) para efetuar essa inspeção. Agendado de acordo com a disponibilidade do cliente."
@@ -723,7 +723,7 @@
       "lembrete": false,
       "etiquetaInterna": "Revisão de Equipamento",
       "etiquetaExterna": "Revisão de Equipamento",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Sem acesso",
       "etiquetaExternaFallback": "Sem acesso",
       "mensagem": "entrou em contato informando que estava sem internet desde o dia anterior. Foram solicitados a ID positiva. O cliente informou que havia somente a luz power acesa/piscando, indicando que o equipamento estava travado. Foi explicado que seria necessária a visita de uma equipe técnica para resolver o problema. Agendado de acordo com a disponibilidade do cliente."
@@ -737,7 +737,7 @@
       "lembrete": false,
       "etiquetaInterna": "Revisão de Equipamento",
       "etiquetaExterna": "Revisão de Equipamento",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Sem acesso",
       "etiquetaExternaFallback": "Sem acesso",
       "mensagem": "relatou que o aparelho não está ligando, mesmo após reiniciar a conexão na tomada. Suspeita que uma peça possa ter queimado. Foi informado que será enviada uma equipe técnica para diagnóstico, com dois cenários possíveis: cobrança de R$50,00 para substituição da fonte de energia caso esteja queimada ou negociação com o setor financeiro para reparo/substituição do modem, devido ao regime de comodato. Cliente concordou com a visita técnica. Agendamento em andamento. Cliente ciente."
@@ -1031,7 +1031,7 @@
       "lembrete": false,
       "etiquetaInterna": "Lentidão - FTTH",
       "etiquetaExterna": "Lentidão",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Instabilidade no WI-FI",
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "fez contato para relatar lentidão em sua conexão. Após verificar as informações junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes da CPE. Confirmado da torre no local. Foram executados os procedimentos padrões, e solicitados alguns procedimentos manuais usuais. O cliente informou que o problema continuar. Dessa forma, será gerado uma O.S. Para equipe verificar no local. Agendado conforme a disponibilidade do cliente."
@@ -1059,7 +1059,7 @@
       "lembrete": false,
       "etiquetaInterna": "Lentidão - FTTH",
       "etiquetaExterna": "Lentidão",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Instabilidade no WI-FI",
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "informa estar enfrentando lentidão. Após verificação, observa-se que o problema afeta todos os dispositivos. Eu menciono a intenção de atualizar a rede, no entanto, o cliente destaca que essa questão é recorrente e deseja que uma equipe externa conduza uma análise, uma vez que já havia contatado previamente sem sucesso. Diante da insatisfação do cliente e da constatação de que se trata de uma situação frequente ainda não atendida localmente, uma Ordem de Serviço (O.S.) vai ser aberta para resolver o problema e garantir a retenção do cliente. Agendado de acordo com a disponibilidade do cliente."
@@ -1087,7 +1087,7 @@
       "lembrete": false,
       "etiquetaInterna": "Quedas na conexão - FTTH",
       "etiquetaExterna": "Lentidão",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Instabilidade no WI-FI",
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "fez contato para relatar quedas de acesso em sua conexão. Após verificar as informações junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes da CPE, contudo limitava-se à rede Wi-Fi.  Foram executados os procedimentos padrões, e solicitados alguns procedimentos manuais usuais. O cliente informou que o acesso continua instável, desta forma foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente."
@@ -1115,7 +1115,7 @@
       "lembrete": false,
       "etiquetaInterna": "Quedas na conexão - FTTH",
       "etiquetaExterna": "Lentidão",
-      "servicoExterno": "Reparo Rápido",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Instabilidade no WI-FI",
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "informa estar enfrentando quedas de conexão. Após verificação, observa-se que o problema afeta todos os dispositivos e se restringe à rede sem fio. Eu menciono a intenção de atualizar a rede, no entanto, o cliente destaca que essa questão é recorrente e deseja que uma equipe externa conduza uma análise, uma vez que já havia contatado previamente sem sucesso. Diante da insatisfação do cliente e da constatação de que se trata de uma situação frequente ainda não atendida localmente, uma Ordem de Serviço (O.S.) vai ser aberta para resolver o problema e garantir a retenção do cliente. Agendado de acordo com a disponibilidade do cliente."
