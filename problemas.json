@@ -1157,7 +1157,7 @@
       "infra": "Fibra"
     },
     {
-      "id": 83,
+      "id": 84,
       "filtro": ["FTTH"],
       "titulo": "Não efetua/recebe ligações - Externo",
       "mensagem": "fez o contato relatando que não conseguia realizar nem receber chamadas em seu telefone fixo, cuja linha está registrada no sistema. O cabo e as travas laterais foram verificados e estavam corretos. Após remover e recolocar o cabo da porta “phone” e realizar alguns ajustes no sistema, o problema persistiu. Dessa forma, será aberta uma O.S. para o reparo.",
@@ -1168,8 +1168,8 @@
       "servico": "reparo rápido",
       "infra": "Fibra"
     }
-   ],
-  
+  ],
+
   "grausParentesco": [
     "Cônjuge",
     "Filho(a)",
