@@ -1120,6 +1120,46 @@
       "etiquetaExternaFallback": "Instabilidade no WI-FI",
       "mensagem": "informa estar enfrentando quedas de conexão. Após verificação, observa-se que o problema afeta todos os dispositivos e se restringe à rede sem fio. Eu menciono a intenção de atualizar a rede, no entanto, o cliente destaca que essa questão é recorrente e deseja que uma equipe externa conduza uma análise, uma vez que já havia contatado previamente sem sucesso. Diante da insatisfação do cliente e da constatação de que se trata de uma situação frequente ainda não atendida localmente, uma Ordem de Serviço (O.S.) vai ser aberta para resolver o problema e garantir a retenção do cliente. Agendado de acordo com a disponibilidade do cliente."
     }
+    {
+      "titulo": "Hibernação Chat",
+      "mensagem": "fez o contato, mas permaneceu inativo, entrando em hibernação e levando ao encerramento automático do atendimento.",
+      "externo": false,
+      "aguardar": false,
+      "etiqueta": "Hibernação Chat",
+      "etiqueta_externo": "Hibernação Chat",
+      "servico": "Reparo Físico",
+      "infra": "Geral"
+  },
+  {
+      "titulo": "Configuração Estruturada",
+      "mensagem": "fez o contato solicitando o cabeamento do seu equipamento particular. Foi oferecido o serviço de configuração estruturada de rede interna por R$90, podendo ser dividido em até 3x. O serviço inclui 20 metros de cabo de rede gratuitamente. Caso ultrapasse essa metragem, o valor adicional é de R$1,30 por metro. Se houver necessidade de cabo de fibra, o custo é de R$0,60 por metro.",
+      "externo": true,
+      "aguardar": true,
+      "etiqueta": "configuração estruturada de rede interna",
+      "etiqueta_externo": "configuração estruturada de rede interna",
+      "servico": "Serviço Adicional",
+      "infra": "Geral"
+  },
+  {
+      "titulo": "Não efetua/recebe ligações - Resolvido",
+      "mensagem": "fez o contato relatando que não conseguia realizar nem receber chamadas em seu telefone fixo, cuja linha está registrada no sistema. O cabo e as travas laterais foram verificados e estavam corretos. Após remover e recolocar o cabo da porta “phone” e realizar alguns ajustes no sistema, o telefone voltou a funcionar normalmente.",
+      "externo": false,
+      "aguardar": false,
+      "etiqueta": "problemas no telefone fixo",
+      "etiqueta_externo": "problemas no telefone fixo",
+      "servico": "reparo rápido",
+      "infra": "Fibra"
+  },
+  {
+      "titulo": "Não efetua/recebe ligações - Externo",
+      "mensagem": "fez o contato relatando que não conseguia realizar nem receber chamadas em seu telefone fixo, cuja linha está registrada no sistema. O cabo e as travas laterais foram verificados e estavam corretos. Após remover e recolocar o cabo da porta “phone” e realizar alguns ajustes no sistema, o problema persistiu. Dessa forma, será aberta uma O.S. para o reparo.",
+      "externo": true,
+      "aguardar": false,
+      "etiqueta": "problemas no telefone fixo",
+      "etiqueta_externo": "problemas no telefone fixo",
+      "servico": "reparo rápido",
+      "infra": "Fibra"
+  },
   ],
   
   "grausParentesco": [
