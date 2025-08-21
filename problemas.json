@@ -889,7 +889,7 @@
       "externo": false,
       "aguardar": false,
       "lembrete": false,
-      "etiquetaInterna": "Solicitação de dados",
+      "etiquetaInterna": "solicitação de dados",
       "etiquetaExterna": "",
       "servicoExterno": "",
       "etiquetaInternaFallback": "Informações do Serviço",
