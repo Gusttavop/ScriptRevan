@@ -134,7 +134,7 @@
       "aguardar": false,
       "lembrete": false,
       "etiquetaInterna": "Sem acesso TP-LINK",
-      "etiquetaExterna": "Sem acesso TP-LINK (reparo rápido)",
+      "etiquetaExterna": "Sem acesso TP-LINK",
       "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Sem acesso",
       "etiquetaExternaFallback": "Instabilidade TP-LINK",
