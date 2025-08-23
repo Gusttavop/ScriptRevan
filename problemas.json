@@ -134,8 +134,8 @@
       "aguardar": false,
       "lembrete": false,
       "etiquetaInterna": "Sem acesso TP-LINK",
-      "etiquetaExterna": "Sem acesso TP-LINK",
-      "servicoExterno": "Reparo Rápido",
+      "etiquetaExterna": "Sem acesso TP-LINK (reparo rápido)",
+      "servicoExterno": "reparo rápido",
       "etiquetaInternaFallback": "Sem acesso",
       "etiquetaExternaFallback": "Instabilidade TP-LINK",
       "mensagem": "fez contato para comunicar a ausência de acesso. Foi verificado que a ONU apresentava sinal e o roteador não estava gerenciando a conexão. Após verificar a conexão do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfiguração remota. Mesmo após a realização desses passos, não foi possível restabelecer o acesso, dessa forma foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente."
