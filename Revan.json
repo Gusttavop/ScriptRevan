@@ -141,11 +141,8 @@
         this.setupAccordionFunctionality();
         this.setupFilters();
         this.filteredItems = [...this.allItems];
-        this.showToast("Automação carregada.", "success");
       } catch (error) {
         console.error("Erro na inicialização:", error);
-        this.showToast("Falha ao carregar a automação.", "error");
-
         const tempBtnOnError = document.getElementById("automationFloatingBtn");
         if (tempBtnOnError) {
             tempBtnOnError.remove();
@@ -759,7 +756,6 @@
       this.finalMessage = document.getElementById("editMessageTextarea").value;
       document.getElementById("messagePreview").textContent = this.finalMessage;
       this.toggleEditModal(false);
-      this.showToast("Mensagem atualizada.", "success");
     }
 
     makeDraggable(element) {
@@ -1216,7 +1212,6 @@
           }
         }
 
-        this.showToast("Automação concluída com sucesso!", "success");
         log("================ AUTOMAÇÃO CONCLUÍDA ================", "success");
 
       } catch (error) {
