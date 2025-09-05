@@ -137,7 +137,7 @@ function createElements() {
   sidebar.id = "sidebar";
 
   const header = document.createElement("header");
-  header.textContent = "Máscara de atendimento";
+  header.textContent = "Máscara de Atendimento";
   sidebar.appendChild(header);
 
   const searchContainer = document.createElement("div");
