@@ -423,7 +423,7 @@ function addStyles() {
   style.textContent = `
       #openSidebarBtn {
     position: fixed;
-    top: 20px;
+    top: 112px;
     right: 20px;
     padding: 12px;
     background-color: #0858ce;
