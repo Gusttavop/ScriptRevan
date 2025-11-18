@@ -257,17 +257,17 @@
     buttonContainer.className = "button-container";
     buttonContainer.style.display = "none";
 
-    const sendButton = document.createElement("button");
-    sendButton.textContent = "Enviar";
-    sendButton.className = "send-button";
-    const editButton = document.createElement("button");
-    editButton.textContent = "Editar antes de enviar";
-    editButton.className = "edit-button";
-    editButton.addEventListener("click", e => {
-      e.preventDefault();
-      console.log("Editando antes de enviar...");
-      openEditModal();
-    });
+     const sendButton = document.createElement("button");
+  sendButton.textContent = "Enviar";
+  sendButton.className = "send-button";
+  const editButton = document.createElement("button");
+  editButton.textContent = "Editar antes de enviar";
+  editButton.className = "edit-button";
+  editButton.addEventListener("click", e => {
+    e.preventDefault();
+    console.log("Editando antes de enviar...");
+    openEditModal();
+  });
 
     buttonContainer.appendChild(sendButton);
     buttonContainer.appendChild(editButton);
