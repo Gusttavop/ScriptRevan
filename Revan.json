@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Máscara de Atendimento (corrigido)
 // @namespace    http://tampermonkey.net/
-// @version      1.4.1
+// @version      1.4.3
 // @description  Adiciona um botão flutuante que abre um sidebar com overlay controlado por uma variável global.
 // @author       Você
 // @match        https://revan-atendimento.brisanet.net.br/*
@@ -92,6 +92,7 @@
 
   // Make construirMensagemFinal globally accessible
   window.construirMensagemFinal = () => {
+    // Se 'mensagemFinal' tem um valor (salvo da edição), usa ele.
     if (window.ItemSelectorState.mensagemFinal) {
       return window.ItemSelectorState.mensagemFinal;
     }
@@ -122,8 +123,47 @@
       finalMensagem = ` Observação: ${observationsTextarea.value.trim()}`;
     }
 
+    // Retorna a mensagem construída, que será usada se não houver 'mensagemFinal' salva.
     return `${inicioMensagem}${corpoMensagem}${finalMensagem}`.trim();
   };
+
+  // Funções do Modal movidas para o escopo principal para garantir acessibilidade
+  // e associação correta.
+
+  function openEditModal() {
+    const elements = window.ItemSelectorState.elements;
+    if (!elements) return console.error("openEditModal: elements não definido");
+    
+    // Prioriza a mensagem já editada ou constrói uma nova se for a primeira abertura
+    const messageToEdit = window.ItemSelectorState.mensagemFinal || window.construirMensagemFinal();
+    
+    elements.editMessageTextarea.value = messageToEdit;
+    elements.editModal.style.display = "block";
+    elements.editMessageTextarea.focus();
+    console.log("Modal de edição aberto.");
+  }
+
+  function closeEditModal() {
+    const elements = window.ItemSelectorState.elements;
+    if (elements?.editModal) elements.editModal.style.display = "none";
+    console.log("Modal de edição fechado.");
+  }
+
+  function saveEdit() {
+    const elements = window.ItemSelectorState.elements;
+    if (!elements) return;
+
+    // 1. Salva o valor da textarea na variável de estado que guarda a mensagem editada
+    window.ItemSelectorState.mensagemFinal = elements.editMessageTextarea.value;
+    
+    // 2. Atualiza a pré-visualização para refletir a nova mensagem salva
+    updatePreview();
+    
+    // 3. Fecha o modal
+    closeEditModal();
+    console.log("Mensagem editada salva no estado.");
+  }
+
 
   function createElements() {
     const button = document.createElement("button");
@@ -263,11 +303,8 @@
     const editButton = document.createElement("button");
     editButton.textContent = "Editar antes de enviar";
     editButton.className = "edit-button";
-    editButton.addEventListener("click", e => {
-      e.preventDefault();
-      console.log("Editando antes de enviar...");
-      openEditModal();
-    });
+    
+    // Não anexamos o listener de clique aqui. Ele será anexado em setupEventListeners para ser mais robusto.
 
     buttonContainer.appendChild(sendButton);
     buttonContainer.appendChild(editButton);
@@ -305,7 +342,7 @@
     const closeBtn = document.createElement("span");
     closeBtn.className = "close";
     closeBtn.innerHTML = "&times;";
-    closeBtn.onclick = closeEditModal;
+    // Os listeners do modal serão anexados em setupEventListeners
 
     const modalTitle = document.createElement("h2");
     modalTitle.textContent = "Editar Mensagem Final";
@@ -319,12 +356,10 @@
     const saveEditButton = document.createElement("button");
     saveEditButton.id = "saveEditButton";
     saveEditButton.textContent = "Salvar Edição";
-    saveEditButton.onclick = saveEdit;
 
     const cancelEditButton = document.createElement("button");
     cancelEditButton.id = "cancelEditButton";
     cancelEditButton.textContent = "Cancelar Edição";
-    cancelEditButton.onclick = closeEditModal;
 
     buttonContainerEdit.appendChild(saveEditButton);
     buttonContainerEdit.appendChild(cancelEditButton);
@@ -341,6 +376,10 @@
     overlay.id = "sidebar-overlay";
     document.body.appendChild(overlay);
 
+    // Também anexar o modal ao body (ou sidebar, mas body é mais seguro para overlay)
+    document.body.appendChild(editModal);
+
+
     return {
       sidebar,
       searchInput,
@@ -356,6 +395,8 @@
       speakerInput,
       observationsTextarea,
       buttonContainer,
+      sendButton, 
+      editButton, 
       previewSection,
       internalLabelPreview,
       externalLabelPreview,
@@ -365,6 +406,7 @@
       buttonContainerEdit,
       saveEditButton,
       cancelEditButton,
+      closeBtn,
     };
   }
 
@@ -932,6 +974,8 @@
       editMessageTextarea,
       saveEditButton,
       cancelEditButton,
+      editButton,
+      closeBtn,
     } = elements;
 
     const openSidebarBtn = document.getElementById("openSidebarBtn");
@@ -972,6 +1016,7 @@
       e.stopPropagation();
       searchInput.value = "";
       window.ItemSelectorState.selectedItem = null;
+      window.ItemSelectorState.mensagemFinal = "";
       clearButton.style.display = "none";
       specificationSection.style.display = "none";
       buttonContainer.style.display = "none";
@@ -1006,8 +1051,20 @@
       updatePreview();
     });
     speakerInput.addEventListener("input", updatePreview);
-    relationshipSelect.addEventListener("change", updatePreview);
+    relationshipSelect.querySelector("select").addEventListener("change", updatePreview);
     observationsTextarea.addEventListener("input", updatePreview);
+    
+    // **CORREÇÃO CRÍTICA AQUI:**
+    // Garante que a função openEditModal (agora no escopo principal) é chamada no clique.
+    // Usamos um console.log extra para depuração.
+    editButton.addEventListener("click", e => {
+      e.preventDefault();
+      console.log("Botão 'Editar antes de enviar' clicado.");
+      openEditModal(); 
+    });
+
+    // Listeners do modal
+    closeBtn.addEventListener("click", closeEditModal);
     saveEditButton.addEventListener("click", saveEdit);
     cancelEditButton.addEventListener("click", closeEditModal);
 
@@ -1085,24 +1142,6 @@
       onPointerMove(t.clientX, t.clientY);
     }, { passive: true });
     document.addEventListener("touchend", onPointerUp, false);
-  }
-
-  function saveEdit() {
-    const elements = window.ItemSelectorState.elements;
-    window.ItemSelectorState.mensagemFinal = elements.editMessageTextarea.value;
-    updatePreview();
-    closeEditModal();
-  }
-
-  function openEditModal() {
-    const elements = window.ItemSelectorState.elements;
-    elements.editModal.style.display = "block";
-    elements.editMessageTextarea.value = window.construirMensagemFinal();
-  }
-
-  function closeEditModal() {
-    const elements = window.ItemSelectorState.elements;
-    if (elements?.editModal) elements.editModal.style.display = "none";
   }
 
   function init() {
@@ -1187,6 +1226,7 @@
       li.addEventListener("click", () => {
         resetElementsToDefault();
         window.ItemSelectorState.selectedItem = item;
+        window.ItemSelectorState.mensagemFinal = ""; 
         updateUIOnSelection(item);
 
         console.log("Selected Item:", window.ItemSelector.getSelectedItem());
@@ -1231,7 +1271,7 @@
 
   function updateUIOnSelection(item) {
     const elements = window.ItemSelectorState.elements;
-    resetElementsToDefault();
+    // resetElementsToDefault(); // Já chamado antes de updateUIOnSelection
 
     elements.searchInput.value = item.titulo || "";
     elements.clearButton.style.display = "flex";
@@ -1277,7 +1317,7 @@
     window.ItemSelectorState.elements.internalLabelPreview.innerHTML = `<h4>Etiqueta Interna:</h4><p>${s.etiqueta || ""}</p>`;
     window.ItemSelectorState.elements.externalLabelPreview.innerHTML = `<h4>Etiqueta Externa:</h4><p>${s.etiqueta_externo || "N/A"}</p>`;
 
-    const mensagemFinal = window.construirMensagemFinal();
+    const mensagemFinal = window.construirMensagemFinal(); 
     window.ItemSelectorState.elements.finalMessagePreview.innerHTML = `<h4>Mensagem Final:</h4><p>${mensagemFinal}</p>`;
   }
 
@@ -1327,7 +1367,7 @@
     // Reset select
     const sel = elements.relationshipSelect.querySelector("select");
     if (sel) sel.selectedIndex = 0;
-    window.ItemSelectorState.mensagemFinal = "";
+    window.ItemSelectorState.mensagemFinal = ""; 
     closeEditModal();
   }
 
@@ -1353,7 +1393,8 @@
       if (toggle) toggle.click();
     }
 
-    const msgF = window.construirMensagemFinal();
+    // Usa a mensagem final, que agora prioriza a versão editada (se houver)
+    const msgF = window.construirMensagemFinal(); 
     const textArea = document.querySelector(".text-area");
     if (textArea) {
       textArea.value = msgF;
