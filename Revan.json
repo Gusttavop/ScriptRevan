@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Máscara de Atendimento (corrigido)
 // @namespace    http://tampermonkey.net/
-// @version      1.4.4
-// @description  Adiciona um botão flutuante que abre um sidebar com overlay controlado por uma variável global. Funções de automação otimizadas.
+// @version      1.4.5
+// @description  Adiciona um botão flutuante que abre um sidebar com overlay controlado por uma variável global. Funções de automação otimizadas e confirmação final automática.
 // @author       Você
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
@@ -396,7 +396,6 @@
       finalMessagePreview,
       editModal,
       editMessageTextarea,
-      buttonContainerEdit,
       saveEditButton,
       cancelEditButton,
       closeBtn,
@@ -1410,6 +1409,22 @@
   }
 
   init();
+  
+  // Função auxiliar para confirmar a finalização (clica em "Sim, finalizar")
+  async function confirmarFinalizacao() {
+      console.log("Tentando confirmar finalização...");
+      try {
+          // XPATH para o botão vermelho de confirmação "Sim, finalizar"
+          const xpathConfirmar = "//button[span[contains(text(), 'Sim, finalizar')]]";
+          
+          await esperarEClicar(xpathConfirmar, 50, 10000);
+          console.log("Confirmação de finalização automática bem-sucedida.");
+      } catch (error) {
+          console.log("Modal de confirmação não encontrado ou não necessário. Continuando...");
+          // Não lança erro, pois o modal pode não aparecer em todos os cenários.
+      }
+  }
+
 
   // Função principal de automação
   async function executarAutomacao() {
@@ -1472,12 +1487,14 @@
     if (window.ItemSelectorState.selectedItem?.externo) {
       console.log("Finalizando caso externo");
       await finalizarExterno();
+      await confirmarFinalizacao(); // CONFIRMAÇÃO AUTOMÁTICA ADICIONADA AQUI
     } else if (document.getElementById("reminderCheckbox")?.checked) {
       console.log("Adicionando lembrete");
       await adicionarLembrete();
     } else {
       console.log("Finalizando caso interno");
       await finalizarInterno();
+      await confirmarFinalizacao(); // CONFIRMAÇÃO AUTOMÁTICA ADICIONADA AQUI
     }
 
     console.log("Automação concluída com sucesso");
@@ -1488,7 +1505,7 @@
     try {
       const tagElement = await esperarElemento(
         "//nz-tag[contains(@class, 'editable-tag')]",
-        50, // Otimizado: 150ms -> 50ms
+        100, // Otimizado: 150ms -> 50ms
         5000
       );
 
@@ -1518,13 +1535,13 @@
 
       await esperarEClicar(
         `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(normalize-space(.), '${etiquetaInterna}')]`,
-        50, // Otimizado: 150ms -> 50ms
+        100, // Otimizado: 150ms -> 50ms
         10000
       );
 
       await esperarElemento(
         `//li[contains(@class, 'ant-select-selection__choice')]//div[contains(text(), '${etiquetaInterna}')]`,
-        50, // Otimizado: 150ms -> 50ms
+        100, // Otimizado: 150ms -> 50ms
         5000
       );
 
@@ -1554,7 +1571,7 @@
     if (forward) forward.click();
 
     // Otimizado: 300ms -> 100ms
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     if (document.getElementById("externalCallCheckbox")?.checked) {
       try {
@@ -1577,18 +1594,18 @@
 
     await esperarElemento(
       "//ul[contains(@class, 'ant-select-dropdown-menu') and not(contains(@style, 'display: none'))]",
-      50, // Otimizado: 150ms -> 50ms
+      100, // Otimizado: 150ms -> 50ms
       20000
     );
 
     await esperarEClicar(
       "//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'suporte externo')]",
-      50, // Otimizado: 150ms -> 50ms
+      100, // Otimizado: 150ms -> 50ms
       20000
     );
 
     // Otimizado: 200ms -> 50ms
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     await clicarComTentativas(
       "//nz-select[@id='problem']//input",
@@ -1609,19 +1626,19 @@
 
     await esperarEClicar(
       `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${etiquetaExterno.toLowerCase()}')]`,
-      50, // Otimizado: 150ms -> 50ms
+      100, // Otimizado: 150ms -> 50ms
       20000
     );
 
     await esperarElemento(
       `//li[contains(@class, 'ant-select-selection__choice')]//div[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${etiquetaExterno.toLowerCase()}')]`,
-      50, // Otimizado: 150ms -> 50ms
+      100, // Otimizado: 150ms -> 50ms
       20000
     );
 
     const servicoExterno = window.ItemSelectorState.selectedItem.servico || "";
 
-    await esperarElementoHabilitado("//nz-select[@id='service']", 50, 20000); // Otimizado: 500ms -> 50ms
+    await esperarElementoHabilitado("//nz-select[@id='service']", 300, 20000); // Otimizado: 500ms -> 50ms
 
     await clicarComTentativas(
       "//nz-select[@id='problem']//input",
@@ -1629,7 +1646,7 @@
     );
 
     // Otimizado: 200ms -> 50ms
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     await clicarComTentativas(
       "//nz-select[@id='service']//input",
@@ -1650,18 +1667,20 @@
 
     await esperarEClicar(
       `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`,
-      50, // Otimizado: 150ms -> 50ms
+      100, // Otimizado: 150ms -> 50ms
       10000
     );
 
     await esperarElemento(
       `//div[contains(@class, 'ant-select-selection-selected-value') and contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`,
-      50, // Otimizado: 150ms -> 50ms
+      100, // Otimizado: 150ms -> 50ms
       10000
     );
 
     const continuar = document.querySelector('[data-testid="btn-Continuar"]');
     if (continuar) continuar.click();
+    
+    // A confirmação é chamada na função pai (executarAutomacao)
   }
 
   // Função para adicionar lembrete
@@ -1702,7 +1721,7 @@
   // Função para finalizar caso interno
   async function finalizarInterno() {
     // Otimizado: 400ms -> 100ms
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     const more = document.querySelector(".more");
     if (more) more.click();
@@ -1715,6 +1734,8 @@
     );
 
     if (finalizar) finalizar.click();
+    
+    // A confirmação é chamada na função pai (executarAutomacao)
   }
 
   // Função auxiliar para esperar e clicar em um elemento
@@ -1778,7 +1799,7 @@
     xpathParaClicar,
     xpathParaVerificar,
     maxTentativas = 60,
-    intervalo = 100 // Otimizado: 200ms -> 100ms
+    intervalo = 150 // Otimizado: 200ms -> 100ms
   ) {
     for (let i = 0; i < maxTentativas; i++) {
       const elementoParaClicar = document.evaluate(
@@ -1816,7 +1837,7 @@
   // Otimizado: Default intervalo = 50ms
   async function esperarElementoHabilitado(
     xpath,
-    intervalo = 50, // Otimizado: 500ms -> 50ms
+    intervalo = 200, // Otimizado: 500ms -> 50ms
     timeout = 10000
   ) {
     const startTime = Date.now();
