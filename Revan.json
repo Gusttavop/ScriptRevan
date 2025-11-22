@@ -1,1 +1,942 @@
+// ==UserScript==
+// @name         Máscara de Atendimento (corrigido - edição funcional)
+// @namespace    http://tampermonkey.net/
+// @version      1.4.3
+// @description  Adiciona um botão flutuante que abre um sidebar com overlay controlado por uma variável global. Correções no modal de edição e pequenos ajustes de responsividade.
+// @author       Você
+// @match        https://revan-atendimento.brisanet.net.br/*
+// @grant        GM_addStyle
+// ==/UserScript==
 
+(function () {
+  "use strict";
+
+  // ---------- Estado global ----------
+  window.ItemSelectorState = {
+    jsonData: [],
+    availableTags: new Set(),
+    selectedItem: null,
+    mensagemFinal: "",
+    elements: null,
+    onItemSelectedCallback: null,
+  };
+
+  // flag pública do resultado de adição de tag
+  window.tagResult = false;
+
+  // ---------- Funções públicas ----------
+  window.tagExt = function () {
+    // extrai as tags visíveis e checa disponibilidade
+    try {
+      if (!window.ItemSelectorState?.selectedItem) {
+        console.log("tagExt: nenhum item selecionado");
+        return false;
+      }
+      const spans = Array.from(document.querySelectorAll("div.tags > div.tag > nz-tag > span"));
+      const tags = spans.map(s => (s && s.textContent ? s.textContent.trim() : "")).filter(Boolean);
+      globalThis.globalAvailableTags = new Set(tags);
+      const selected = window.ItemSelectorState.selectedItem.etiqueta;
+      const present = !!selected && globalThis.globalAvailableTags.has(selected);
+      window.tagResult = present;
+      console.log("tagExt:", { tags, selected, present });
+      return present;
+    } catch (e) {
+      console.error("tagExt error:", e);
+      window.tagResult = false;
+      return false;
+    }
+  };
+
+  window.ItemSelector = {
+    getSelectedItem: function () {
+      return window.ItemSelectorState.selectedItem || null;
+    },
+    getFormattedMessage: function () {
+      return window.construirMensagemFinal() || "";
+    },
+    getFormData: function () {
+      const s = window.ItemSelectorState;
+      if (!s.selectedItem || !s.elements) return null;
+      const el = s.elements;
+      return {
+        item: s.selectedItem,
+        isHolder: !!el.holderCheckbox.querySelector("input")?.checked,
+        speaker: el.speakerInput.value || "",
+        relationship: el.relationshipSelect.querySelector("select")?.value || "",
+        observations: el.observationsTextarea.value || "",
+        isExternalCall: !!el.externalCallCheckbox.querySelector("input")?.checked,
+        hasReminder: !!el.reminderCheckbox.querySelector("input")?.checked,
+        isImportant: !!el.importantCheckbox.querySelector("input")?.checked,
+        finalMessage: window.construirMensagemFinal(),
+      };
+    },
+    onItemSelected: function (cb) {
+      if (typeof cb === "function") window.ItemSelectorState.onItemSelectedCallback = cb;
+    }
+  };
+
+  // ---------- Construir mensagem final ----------
+  window.construirMensagemFinal = function () {
+    const state = window.ItemSelectorState;
+    if (!state.selectedItem || !state.elements) return "";
+    if (state.mensagemFinal) return state.mensagemFinal;
+    const el = state.elements;
+    let inicio = "";
+    try {
+      if (el.holderCheckbox.querySelector("input").checked) {
+        inicio = "Próprio titular - ";
+      } else if (el.speakerInput.value) {
+        const relationship = el.relationshipSelect.querySelector("select")?.value || "";
+        inicio = `${el.speakerInput.value} - ${relationship} - `;
+      } else {
+        inicio = "Cliente - ";
+      }
+    } catch (e) {
+      inicio = "Cliente - ";
+    }
+    const corpo = state.selectedItem.mensagem || "";
+    const obs = (el.observationsTextarea.value || "").trim();
+    const finalObs = obs ? ` Observação: ${obs}` : "";
+    return `${inicio}${corpo}${finalObs}`.trim();
+  };
+
+  // ---------- Criação de elementos (UI) ----------
+  function createElements() {
+    // botão flutuante
+    const button = document.createElement("button");
+    button.id = "openSidebarBtn";
+    button.setAttribute("aria-label", "Abrir Máscara de Atendimento");
+    button.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#ffffff"><path d="M460-320v-320L300-480l160 160ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm440-80h120v-560H640v560Zm-80 0v-560H200v560h360Zm80 0h120-120Z"/></svg>';
+    document.body.appendChild(button);
+
+    // sidebar
+    const sidebar = document.createElement("div");
+    sidebar.id = "sidebar";
+
+    const header = document.createElement("header");
+    header.textContent = "Máscara de Atendimento";
+    sidebar.appendChild(header);
+
+    const searchContainer = document.createElement("div");
+    searchContainer.id = "searchContainer";
+
+    const inputWrapper = document.createElement("div");
+    inputWrapper.className = "input-wrapper";
+
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.id = "searchInput";
+    searchInput.placeholder = "Selecione um problema";
+
+    const clearButton = document.createElement("button");
+    clearButton.className = "clear-button";
+    clearButton.innerHTML = "×";
+    clearButton.style.display = "none";
+
+    inputWrapper.appendChild(searchInput);
+    inputWrapper.appendChild(clearButton);
+    searchContainer.appendChild(inputWrapper);
+    sidebar.appendChild(searchContainer);
+
+    const dropdown = document.createElement("ul");
+    dropdown.id = "dropdown";
+    dropdown.style.display = "none";
+    sidebar.appendChild(dropdown);
+
+    const specificationSection = document.createElement("div");
+    specificationSection.id = "specificationSection";
+    specificationSection.style.display = "none";
+
+    const specificationTitle = document.createElement("h3");
+    specificationTitle.textContent = "Especificações do problema";
+    specificationSection.appendChild(specificationTitle);
+
+    const externalCallCheckbox = createCheckbox("externalCallCheckbox", "Aguardar chamado externo?");
+    externalCallCheckbox.style.display = "none";
+    specificationSection.appendChild(externalCallCheckbox);
+
+    const reminderCheckbox = createCheckbox("reminderCheckbox", "Finalizar com lembrete");
+    reminderCheckbox.style.display = "none";
+    specificationSection.appendChild(reminderCheckbox);
+
+    const importantCheckbox = createCheckbox("importantCheckbox", "Chamado importante");
+    importantCheckbox.style.display = "none";
+    specificationSection.appendChild(importantCheckbox);
+
+    const observationsTextarea = document.createElement("textarea");
+    observationsTextarea.id = "observationsTextarea";
+    observationsTextarea.placeholder = "Observações";
+    observationsTextarea.rows = 3;
+    observationsTextarea.style.display = "none";
+    observationsTextarea.removeAttribute("readonly");
+    specificationSection.appendChild(observationsTextarea);
+
+    sidebar.appendChild(specificationSection);
+
+    const clientDataSection = document.createElement("div");
+    clientDataSection.id = "clientDataSection";
+
+    const clientDataTitle = document.createElement("h3");
+    clientDataTitle.textContent = "Dados do cliente";
+    clientDataSection.appendChild(clientDataTitle);
+
+    const holderCheckbox = createCheckbox("holderCheckbox", "Fala com o titular");
+    clientDataSection.appendChild(holderCheckbox);
+
+    const speakerInput = document.createElement("input");
+    speakerInput.type = "text";
+    speakerInput.id = "speakerInput";
+    speakerInput.placeholder = "Quem fala";
+    speakerInput.style.display = "none";
+    clientDataSection.appendChild(speakerInput);
+
+    const relationshipSelect = createSelect("relationshipSelect", "Grau de parentesco", [
+      { value: "Cliente", text: "Não informado" },
+      { value: "Esposo(a) do(a) titular", text: "Esposo(a) do(a) titular" },
+      { value: "Mãe do(a) titular", text: "Mãe do(a) titular" },
+      { value: "Pai do(a) titular", text: "Pai do(a) titular" },
+      { value: "Filho(a) do(a) titular", text: "Filho(a) do(a) titular" },
+      { value: "Neto(a) do(a) titular", text: "Neto(a) do(a) titular" },
+      { value: "Amigo(a) do(a) titular", text: "Amigo(a) do(a) titular" },
+      { value: "Funcionário(a) do(a) titular", text: "Funcionário(a) do(a) titular" },
+      { value: "Namorado(a) do(a) titular", text: "Namorado(a) do(a) titular" },
+      { value: "Irmão(ã) do(a) titular", text: "Irmão(ã) do(a) titular" },
+      { value: "Sobrinho(a) do(a) titular", text: "Sobrinho(a) do(a) titular" },
+      { value: "Avô(ó) do(a) titular", text: "Avô(ó) do(a) titular" },
+      { value: "Genro/Nora do(a) titular", text: "Genro/Nora do(a) titular" },
+      { value: "Cunhado(a) do(a) titular", text: "Cunhado(a) do(a) titular" },
+      { value: "Enteado(a) do(a) titular", text: "Enteado(a) do(a) titular" },
+      { value: "Tutor(a) do(a) titular", text: "Tutor(a) do(a) titular" },
+      { value: "Sócio(a) do(a) titular", text: "Sócio(a) do(a) titular" },
+      { value: "Vizinho(a) do(a) titular", text: "Vizinho(a) do(a) titular" },
+      { value: "Padrasto/Madrasta do(a) titular", text: "Padrasto/Madrasta do(a) titular" },
+      { value: "Parente do(a) titular", text: "Parente do(a) titular" },
+    ]);
+    relationshipSelect.style.display = "none";
+    clientDataSection.appendChild(relationshipSelect);
+
+    sidebar.appendChild(clientDataSection);
+
+    const buttonContainer = document.createElement("div");
+    buttonContainer.className = "button-container";
+    buttonContainer.style.display = "none";
+
+    const sendButton = document.createElement("button");
+    sendButton.textContent = "Enviar";
+    sendButton.className = "send-button";
+
+    const editButton = document.createElement("button");
+    editButton.textContent = "Editar antes de enviar";
+    editButton.className = "edit-button";
+
+    buttonContainer.appendChild(sendButton);
+    buttonContainer.appendChild(editButton);
+    sidebar.appendChild(buttonContainer);
+
+    const previewSection = document.createElement("div");
+    previewSection.id = "previewSection";
+    previewSection.style.display = "none";
+
+    const internalLabelPreview = document.createElement("div");
+    internalLabelPreview.id = "internalLabelPreview";
+    internalLabelPreview.className = "preview-item";
+    previewSection.appendChild(internalLabelPreview);
+
+    const externalLabelPreview = document.createElement("div");
+    externalLabelPreview.id = "externalLabelPreview";
+    externalLabelPreview.className = "preview-item";
+    previewSection.appendChild(externalLabelPreview);
+
+    const finalMessagePreview = document.createElement("div");
+    finalMessagePreview.id = "finalMessagePreview";
+    finalMessagePreview.className = "preview-item";
+    previewSection.appendChild(finalMessagePreview);
+
+    sidebar.appendChild(previewSection);
+
+    const editModal = document.createElement("div");
+    editModal.id = "editModal";
+    editModal.className = "modal";
+    editModal.style.display = "none";
+    editModal.style.zIndex = "10060"; // garantir acima do overlay
+
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+
+    const closeBtn = document.createElement("span");
+    closeBtn.className = "close";
+    closeBtn.innerHTML = "&times;";
+    closeBtn.onclick = closeEditModal;
+
+    const modalTitle = document.createElement("h2");
+    modalTitle.textContent = "Editar Mensagem Final";
+
+    const editMessageTextarea = document.createElement("textarea");
+    editMessageTextarea.id = "editMessageTextarea";
+    editMessageTextarea.removeAttribute("readonly");
+    editMessageTextarea.style.width = "100%";
+    editMessageTextarea.style.height = "200px";
+
+    const buttonContainerEdit = document.createElement("div");
+    buttonContainerEdit.id = "buttonContainerEdit";
+
+    const saveEditButton = document.createElement("button");
+    saveEditButton.id = "saveEditButton";
+    saveEditButton.textContent = "Salvar Edição";
+
+    const cancelEditButton = document.createElement("button");
+    cancelEditButton.id = "cancelEditButton";
+    cancelEditButton.textContent = "Cancelar Edição";
+
+    buttonContainerEdit.appendChild(saveEditButton);
+    buttonContainerEdit.appendChild(cancelEditButton);
+
+    modalContent.appendChild(closeBtn);
+    modalContent.appendChild(modalTitle);
+    modalContent.appendChild(editMessageTextarea);
+    modalContent.appendChild(buttonContainerEdit);
+
+    editModal.appendChild(modalContent);
+    document.body.appendChild(editModal);
+
+    const overlay = document.createElement("div");
+    overlay.id = "sidebar-overlay";
+    overlay.style.display = "none";
+    document.body.appendChild(overlay);
+
+    // retornando referências úteis
+    return {
+      sidebar,
+      searchInput,
+      clearButton,
+      dropdown,
+      overlay,
+      specificationSection,
+      externalCallCheckbox,
+      reminderCheckbox,
+      importantCheckbox,
+      holderCheckbox,
+      relationshipSelect,
+      speakerInput,
+      observationsTextarea,
+      buttonContainer,
+      previewSection,
+      internalLabelPreview,
+      externalLabelPreview,
+      finalMessagePreview,
+      editModal,
+      editMessageTextarea,
+      buttonContainerEdit,
+      saveEditButton,
+      cancelEditButton,
+      sendButton,
+      editButton,
+    };
+  }
+
+  function createCheckbox(id, label) {
+    const checkboxContainer = document.createElement("div");
+    checkboxContainer.className = "checkbox-container";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = id;
+    checkbox.className = "checkbox-input";
+    const checkboxLabel = document.createElement("label");
+    checkboxLabel.htmlFor = id;
+    checkboxLabel.textContent = label;
+    checkboxContainer.appendChild(checkbox);
+    checkboxContainer.appendChild(checkboxLabel);
+    return checkboxContainer;
+  }
+
+  function createSelect(id, label, options) {
+    const selectContainer = document.createElement("div");
+    selectContainer.className = "select-container";
+    const selectLabel = document.createElement("label");
+    selectLabel.textContent = label;
+    selectLabel.htmlFor = id;
+    selectContainer.appendChild(selectLabel);
+    const select = document.createElement("select");
+    select.id = id;
+    select.className = "custom-select";
+    options.forEach(option => {
+      const optionElement = document.createElement("option");
+      optionElement.value = option.value;
+      optionElement.textContent = option.text;
+      select.appendChild(optionElement);
+    });
+    selectContainer.appendChild(select);
+    return selectContainer;
+  }
+
+  function addStyles() {
+    const style = document.createElement("style");
+    style.textContent = `
+      #openSidebarBtn {
+        position: fixed;
+        top: 112px;
+        right: 20px;
+        padding: 12px;
+        background-color: #0858ce;
+        border: none;
+        cursor: move;
+        z-index: 10070;
+        border-radius: 8px;
+        transition: background-color 0.2s, transform 0.2s;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        color: #fff;
+      }
+      #openSidebarBtn:hover { background-color:#0647a1; transform:scale(1.03); }
+
+      #sidebar {
+        position: fixed;
+        top: 0;
+        right: -400px;
+        width: 400px;
+        height: 100%;
+        background-color: #f0f4f9;
+        transition: right 0.22s ease-in-out;
+        box-shadow: -2px 0 15px rgba(0,0,0,0.1);
+        z-index: 10065;
+        overflow-y: auto;
+      }
+      #sidebar.open { right: 0; }
+
+      #sidebar header {
+        color: white;
+        padding: 48px 32px 40px 32px;
+        font-size: 22px;
+        font-weight: 600;
+        text-align: center;
+        background: #00173a;
+      }
+
+      #searchContainer { padding: 20px; position: relative; }
+
+      .input-wrapper { position: relative; display:flex; align-items:center; border:2px solid #ddd; border-radius:10px; background-color:white; }
+      #searchInput { width:100%; padding:12px 16px; font-size:16px; border:none; }
+      .clear-button { position:absolute; right:12px; background:none; border:none; color:#6B7280; font-size:20px; cursor:pointer; display:none; }
+
+      #dropdown { list-style:none; padding:0; margin:0; max-height:200px; overflow-y:auto; background:white; border:1px solid #ddd; border-radius:10px; position:absolute; width:calc(100% - 40px); left:20px; top:80px; z-index:10080; display:none; }
+      #dropdown li { padding:12px 20px; cursor:pointer; border-bottom:1px solid #f1f5f9; }
+      #dropdown li:hover { background:#F3F4F6; }
+
+      #sidebar-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color: rgba(0,0,0,0.45); z-index:10040; }
+
+      #specificationSection, #clientDataSection { background:#fff; margin: 20px; padding: 16px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.04); }
+      #specificationSection h3, #clientDataSection h3 { margin:0 0 8px 0; font-size:16px; color:#00173a; }
+
+      .checkbox-container { display:flex; align-items:center; gap:8px; margin-top:8px; }
+      .checkbox-input { width:18px; height:18px; }
+
+      .custom-select, #speakerInput, #observationsTextarea { width:100%; padding:8px 10px; border:1px solid #e2e8f0; border-radius:6px; margin-top:8px; font-size:14px; }
+
+      .button-container { display:flex; justify-content:center; gap:10px; margin:12px 16px; }
+      .send-button, .edit-button { padding:10px 14px; border-radius:6px; cursor:pointer; border:none; background:#2563eb; color:#fff; font-weight:600; }
+      .edit-button { background:#6b7280; }
+
+      .preview-item { padding:10px; background:#fff; border-radius:8px; border:1px solid #e6eef8; margin:10px 16px; }
+
+      .modal { display:none; position:fixed; z-index:10060; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
+      .modal-content { background:#fff; margin:6% auto; padding:16px; width:90%; max-width:640px; border-radius:8px; }
+      .close { float:right; font-size:28px; font-weight:bold; cursor:pointer; }
+
+      #editMessageTextarea { width:100%; min-height:160px; padding:10px; font-size:14px; box-sizing:border-box; }
+      #saveEditButton, #cancelEditButton { padding:8px 12px; margin-left:8px; border-radius:6px; cursor:pointer; }
+      #saveEditButton { background:#10B981; color:#fff; border:none; }
+      #cancelEditButton { background:#E5E7EB; border:none; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // ---------- Eventos e comportamento ----------
+  function setupEventListeners() {
+    const el = window.ItemSelectorState.elements;
+    if (!el) { console.error("setupEventListeners: elements nulos"); return; }
+
+    // abrir sidebar
+    const openSidebarBtn = document.getElementById("openSidebarBtn");
+    openSidebarBtn?.addEventListener("click", () => {
+      el.sidebar.classList.add("open");
+      el.overlay.style.display = "block";
+      updateAvailableTags();
+      filterAndDisplayItems();
+    });
+
+    el.overlay.addEventListener("click", () => {
+      closeSidebar();
+      closeEditModal();
+    });
+
+    el.searchInput.addEventListener("input", () => {
+      filterAndDisplayItems();
+      el.dropdown.style.display = "block";
+      el.searchInput.style.borderRadius = "10px 10px 0 0";
+    });
+    el.searchInput.addEventListener("focus", () => {
+      el.dropdown.style.display = "block";
+      el.searchInput.style.borderRadius = "10px 10px 0 0";
+    });
+
+    el.clearButton.addEventListener("click", (e) => {
+      e.stopPropagation();
+      el.searchInput.value = "";
+      window.ItemSelectorState.selectedItem = null;
+      el.clearButton.style.display = "none";
+      el.specificationSection.style.display = "none";
+      el.buttonContainer.style.display = "none";
+      el.previewSection.style.display = "none";
+      closeEditModal();
+      resetElementsToDefault();
+      filterAndDisplayItems();
+      updateButtonState();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!el.searchInput.contains(e.target) && !el.dropdown.contains(e.target)) {
+        el.dropdown.style.display = "none";
+        el.searchInput.style.borderRadius = "10px";
+      }
+    });
+
+    // bind checkboxes and inputs
+    const extInp = el.externalCallCheckbox.querySelector("input");
+    const remInp = el.reminderCheckbox.querySelector("input");
+    const impInp = el.importantCheckbox.querySelector("input");
+    const holderInp = el.holderCheckbox.querySelector("input");
+
+    extInp?.addEventListener("change", updatePreview);
+    remInp?.addEventListener("change", updatePreview);
+    impInp?.addEventListener("change", updatePreview);
+    holderInp?.addEventListener("change", (e) => {
+      el.speakerInput.style.display = e.target.checked ? "none" : "block";
+      el.relationshipSelect.style.display = e.target.checked ? "none" : "block";
+      updatePreview();
+    });
+
+    el.speakerInput.addEventListener("input", updatePreview);
+    el.relationshipSelect.addEventListener("change", updatePreview);
+    el.observationsTextarea.addEventListener("input", updatePreview);
+
+    // modal buttons - ligar corretamente
+    el.saveEditButton.addEventListener("click", () => {
+      window.ItemSelectorState.mensagemFinal = el.editMessageTextarea.value || "";
+      updatePreview();
+      closeEditModal();
+    });
+    el.cancelEditButton.addEventListener("click", closeEditModal);
+
+    // edit button abre modal e foca textarea
+    el.editButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!window.ItemSelectorState.selectedItem) return;
+      el.editModal.style.display = "block";
+      el.editMessageTextarea.value = window.construirMensagemFinal() || "";
+      setTimeout(() => {
+        try { el.editMessageTextarea.focus(); el.editMessageTextarea.select(); } catch (er) {}
+      }, 60);
+    });
+
+    // send action
+    el.sendButton.addEventListener("click", async (e) => {
+      e.preventDefault();
+      try {
+        window.tagExt();
+        await executarAutomacao();
+      } catch (err) {
+        console.error("Erro executarAutomacao:", err);
+      }
+    });
+
+    // defaults
+    holderInp.checked = true;
+    el.speakerInput.style.display = "none";
+    el.relationshipSelect.style.display = "none";
+
+    updateButtonState();
+  }
+
+  function setupDraggableButton() {
+    const button = document.getElementById("openSidebarBtn");
+    if (!button) return;
+    let isDragging = false;
+    let startX = 0, startY = 0, xOff = 0, yOff = 0;
+    function down(e) { isDragging=true; startX = e.clientX - xOff; startY = e.clientY - yOff; button.style.transition='none'; }
+    function move(e) { if(!isDragging) return; e.preventDefault(); xOff = e.clientX - startX; yOff = e.clientY - startY; button.style.transform = `translate3d(${xOff}px, ${yOff}px, 0)`; }
+    function up() { isDragging=false; button.style.transition=''; }
+    button.addEventListener("mousedown", down);
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+    // touch support
+    button.addEventListener("touchstart", (ev) => { const t = ev.touches[0]; isDragging=true; startX = t.clientX - xOff; startY = t.clientY - yOff; }, {passive:true});
+    document.addEventListener("touchmove", (ev) => { if(!isDragging) return; const t = ev.touches[0]; xOff = t.clientX - startX; yOff = t.clientY - startY; button.style.transform = `translate3d(${xOff}px, ${yOff}px, 0)`; }, {passive:true});
+    document.addEventListener("touchend", () => { isDragging=false; });
+  }
+
+  function closeEditModal() {
+    const el = window.ItemSelectorState.elements;
+    if (!el) return;
+    el.editModal.style.display = "none";
+  }
+
+  // ---------- Inicialização ----------
+  function init() {
+    addStyles();
+    window.ItemSelectorState.elements = createElements();
+    const el = window.ItemSelectorState.elements;
+    if (!el) { console.error("init: falha ao criar elementos"); return; }
+    // anexar a sidebar (caso não tenha sido anexada)
+    if (!document.body.contains(el.sidebar)) document.body.appendChild(el.sidebar);
+    setupEventListeners();
+    setupDraggableButton();
+    loadAndFilterData();
+    window.ItemSelector.onItemSelected(item => console.log("onItemSelected:", item));
+  }
+
+  // carrega JSON de problemas
+  async function loadAndFilterData() {
+    try {
+      const resp = await fetch("https://raw.githubusercontent.com/Gusttavop/RevanAntigo/refs/heads/main/Problemas.json");
+      window.ItemSelectorState.jsonData = await resp.json();
+      filterAndDisplayItems();
+    } catch (e) {
+      console.error("Erro ao carregar Problemas.json:", e);
+      window.ItemSelectorState.jsonData = [];
+    }
+  }
+
+  // normalizar string
+  function normalizeString(str) {
+    return String(str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "");
+  }
+
+  // filtrar e exibir
+  function filterAndDisplayItems() {
+    const el = window.ItemSelectorState.elements;
+    if (!el) return;
+    const term = normalizeString(el.searchInput.value || "");
+    const data = window.ItemSelectorState.jsonData || [];
+    const filtered = data.filter(item => {
+      const matchesSearch = normalizeString(item.titulo || "").includes(term);
+      const infraTag = mapInfraToTag(item.infra);
+      const matchesTag = item.infra === "Geral" || window.ItemSelectorState.availableTags.has(infraTag);
+      return matchesSearch && matchesTag;
+    });
+    displayItems(filtered);
+  }
+
+  function mapInfraToTag(infra) {
+    const mapping = { Fibra: "Fibra", IPTV: "IPTV", Telefonia: "Telefonia", FWA: "FWA", Geral: "Geral" };
+    return mapping[infra] || "Geral";
+  }
+
+  function displayItems(items) {
+    if (!validateElements()) return;
+    const el = window.ItemSelectorState.elements;
+    el.dropdown.innerHTML = "";
+    items.forEach(item => {
+      const li = document.createElement("li");
+      li.textContent = item.titulo;
+      li.addEventListener("click", () => {
+        resetElementsToDefault();
+        window.ItemSelectorState.selectedItem = item;
+        updateUIOnSelection(item);
+        if (typeof window.ItemSelectorState.onItemSelectedCallback === "function") window.ItemSelectorState.onItemSelectedCallback(item);
+      });
+      el.dropdown.appendChild(li);
+    });
+  }
+
+  function validateElements() {
+    const el = window.ItemSelectorState.elements;
+    const required = ["dropdown","searchInput","clearButton","specificationSection","externalCallCheckbox","reminderCheckbox","importantCheckbox","observationsTextarea","buttonContainer","previewSection","editModal","editMessageTextarea","saveEditButton","cancelEditButton","sendButton","editButton"];
+    for (const r of required) {
+      if (!el[r]) { console.error("validateElements: faltando", r); return false; }
+    }
+    return true;
+  }
+
+  function updateUIOnSelection(item) {
+    const el = window.ItemSelectorState.elements;
+    resetElementsToDefault();
+    el.searchInput.value = item.titulo || "";
+    el.clearButton.style.display = "flex";
+    el.dropdown.style.display = "none";
+    el.searchInput.style.borderRadius = "10px";
+    el.specificationSection.style.display = "block";
+
+    if (item.externo) {
+      el.externalCallCheckbox.style.display = "block";
+      el.reminderCheckbox.style.display = "none";
+      const cb = el.externalCallCheckbox.querySelector("input");
+      if (cb) cb.checked = !!item.aguardar;
+    } else {
+      el.externalCallCheckbox.style.display = "none";
+      el.reminderCheckbox.style.display = "block";
+      const cb = el.reminderCheckbox.querySelector("input");
+      if (cb) cb.checked = !!item.lembrete;
+    }
+
+    el.importantCheckbox.style.display = "block";
+    el.observationsTextarea.style.display = "block";
+    el.buttonContainer.style.display = "flex";
+    el.previewSection.style.display = "block";
+
+    updateButtonState();
+    updatePreview();
+
+    // tagExt não bloqueante
+    try { window.tagExt(); } catch (e) { console.warn("tagExt falhou:", e); }
+  }
+
+  function updatePreview() {
+    if (!window.ItemSelectorState.selectedItem || !window.ItemSelectorState.elements) return;
+    const s = window.ItemSelectorState.selectedItem;
+    const el = window.ItemSelectorState.elements;
+    el.internalLabelPreview.innerHTML = `<h4>Etiqueta Interna:</h4><p>${s.etiqueta || ""}</p>`;
+    el.externalLabelPreview.innerHTML = `<h4>Etiqueta Externa:</h4><p>${s.etiqueta_externo || "N/A"}</p>`;
+    el.finalMessagePreview.innerHTML = `<h4>Mensagem Final:</h4><p>${window.construirMensagemFinal()}</p>`;
+  }
+
+  function updateButtonState() {
+    const el = window.ItemSelectorState.elements;
+    if (!el) return;
+    const enabled = !!window.ItemSelectorState.selectedItem;
+    el.sendButton.disabled = !enabled;
+    el.editButton.disabled = !enabled;
+  }
+
+  function updateAvailableTags() {
+    window.ItemSelectorState.availableTags.clear();
+    const nodes = document.querySelectorAll("div.tags > div.tag > nz-tag > span");
+    nodes.forEach(n => { if (n && n.textContent) window.ItemSelectorState.availableTags.add(n.textContent.trim()); });
+  }
+
+  function resetElementsToDefault() {
+    const el = window.ItemSelectorState.elements;
+    if (!el) return;
+    try {
+      el.externalCallCheckbox.querySelector("input").checked = false;
+      el.reminderCheckbox.querySelector("input").checked = false;
+      el.importantCheckbox.querySelector("input").checked = false;
+      el.holderCheckbox.querySelector("input").checked = true;
+    } catch (e) {}
+    el.speakerInput.value = "";
+    el.observationsTextarea.value = "";
+    el.editMessageTextarea.value = "";
+    const sel = el.relationshipSelect.querySelector("select");
+    if (sel) sel.selectedIndex = 0;
+    window.ItemSelectorState.mensagemFinal = "";
+    closeEditModal();
+  }
+
+  function closeSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+    if (sidebar) sidebar.classList.remove("open");
+    if (overlay) overlay.style.display = "none";
+  }
+
+  // inicia
+  init();
+
+  // ---------- Automação (mantida, com pequenos ajustes de tempo) ----------
+  async function executarAutomacao() {
+    try {
+      closeSidebar();
+      window.tagResult = false;
+
+      if (document.getElementById("upload")) {
+        const toggle = document.getElementById("toggle_upload");
+        if (toggle) toggle.click();
+      }
+
+      const msgF = window.construirMensagemFinal();
+      const textArea = document.querySelector(".text-area");
+      if (textArea) {
+        textArea.value = msgF;
+        textArea.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+
+      const importantCheckbox = document.getElementById("importantCheckbox");
+      if (importantCheckbox && importantCheckbox.checked) {
+        const importantButton = document.getElementById("important");
+        if (importantButton) importantButton.click();
+      }
+
+      const sendBtn = document.getElementById("send_button");
+      if (sendBtn) {
+        sendBtn.click();
+      }
+
+      // checar e adicionar etiqueta se necessário
+      const existingTags = Array.from(document.querySelectorAll("div.tags > div.tag > nz-tag > span")).map(n => (n.textContent || "").trim().toLowerCase());
+      const desiredTag = (window.ItemSelectorState.selectedItem?.etiqueta || "").trim();
+      const tagExists = desiredTag ? existingTags.includes(desiredTag.toLowerCase()) : false;
+
+      if (!tagExists && desiredTag) {
+        await adicionarEtiqueta();
+      } else {
+        window.tagResult = true;
+      }
+
+      if (window.ItemSelectorState.selectedItem?.externo) {
+        await finalizarExterno();
+      } else if (document.getElementById("reminderCheckbox")?.checked) {
+        await adicionarLembrete();
+      } else {
+        await finalizarInterno();
+      }
+
+      console.log("automação finalizada");
+    } catch (err) {
+      console.error("executarAutomacao erro:", err);
+      throw err;
+    }
+  }
+
+  async function adicionarEtiqueta() {
+    try {
+      const tagElement = await esperarElemento("//nz-tag[contains(@class, 'editable-tag')]", 120, 7000);
+      if (!tagElement) throw new Error("Elemento editável de tags não encontrado");
+      tagElement.click();
+      const tagInput = await esperarElemento("//*[@id='tags']/div/div/ul/li/input", 120, 5000);
+      if (!tagInput) throw new Error("Input de tag não encontrado");
+      tagInput.click();
+      tagInput.value = window.ItemSelectorState.selectedItem.etiqueta;
+      tagInput.dispatchEvent(new Event("input", { bubbles: true }));
+      const etiquetaInterna = window.ItemSelectorState.selectedItem.etiqueta;
+      await esperarEClicar(`//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(normalize-space(.), '${etiquetaInterna}')]`, 120, 7000);
+      await esperarElemento(`//li[contains(@class, 'ant-select-selection__choice')]//div[contains(text(), '${etiquetaInterna}')]`, 120, 5000);
+      const concluirButton = document.querySelector('[data-testid="btn-Concluir"]');
+      if (concluirButton) concluirButton.click();
+      window.tagResult = true;
+      console.log("Etiqueta adicionada:", etiquetaInterna);
+    } catch (err) {
+      window.tagResult = false;
+      console.error("adicionarEtiqueta erro:", err);
+      throw err;
+    }
+  }
+
+  async function finalizarExterno() {
+    try {
+      const etiquetaExterno = window.ItemSelectorState.selectedItem?.etiqueta_externo || "";
+      const forward = document.getElementById("forward");
+      if (forward) forward.click();
+      await sleep(160);
+
+      const extChk = document.getElementById("externalCallCheckbox");
+      if (extChk && extChk.checked) {
+        try {
+          await clicarComTentativas('//lib-input-switch//button[@class="ant-switch"]', '//lib-input-switch//button[@class="ant-switch ant-switch-checked"]', 40, 120);
+        } catch (e) { console.warn("Não foi possível clicar no switch external:", e); }
+        await sleep(80);
+      }
+
+      await clicarComTentativas("//nz-select[@id='sector']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]", 40, 120);
+      await esperarElemento("//ul[contains(@class, 'ant-select-dropdown-menu') and not(contains(@style, 'display: none'))]", 80, 8000);
+      await esperarEClicar("//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'suporte externo')]", 120, 8000);
+      await sleep(120);
+
+      await clicarComTentativas("//nz-select[@id='problem']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]", 40, 120);
+      const problemInput = document.evaluate("//nz-select[@id='problem']//input", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      if (problemInput) { problemInput.value = etiquetaExterno; problemInput.dispatchEvent(new Event("input", { bubbles: true })); }
+      await esperarEClicar(`//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${etiquetaExterno.toLowerCase()}')]`, 120, 8000);
+      await esperarElemento(`//li[contains(@class, 'ant-select-selection__choice')]//div[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${etiquetaExterno.toLowerCase()}')]`, 120, 8000);
+
+      const servicoExterno = window.ItemSelectorState.selectedItem?.servico || "";
+      await esperarElementoHabilitado("//nz-select[@id='service']", 250, 10000);
+      await clicarComTentativas("//nz-select[@id='service']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]", 40, 120);
+      const serviceInput = document.evaluate("//nz-select[@id='service']//input", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      if (serviceInput) { serviceInput.value = servicoExterno; serviceInput.dispatchEvent(new Event("input", { bubbles: true })); }
+      await esperarEClicar(`//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`, 120, 8000);
+
+      const continuar = document.querySelector('[data-testid="btn-Continuar"]');
+      if (continuar) continuar.click();
+    } catch (e) {
+      console.error("finalizarExterno erro:", e);
+      throw e;
+    }
+  }
+
+  async function adicionarLembrete() {
+    try {
+      const more = document.querySelector(".more");
+      if (more) more.click();
+      await sleep(120);
+      const add = document.evaluate("//nz-list-item[span[text()='Adicionar lembrete']]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      if (add) add.click();
+      await sleep(80);
+      const tituloInput = document.getElementById("titulo");
+      if (tituloInput) { tituloInput.click(); tituloInput.value = "Fazer retorno"; tituloInput.dispatchEvent(new Event("input", { bubbles: true })); }
+      const concluir = document.evaluate("//span[contains(text(), 'Concluir')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      if (concluir) concluir.click();
+    } catch (e) { console.error("adicionarLembrete erro:", e); }
+  }
+
+  async function finalizarInterno() {
+    try {
+      await sleep(120);
+      const more = document.querySelector(".more");
+      if (more) more.click();
+      await sleep(80);
+      const finalizar = document.evaluate("//nz-list-item[span[text()='Finalizar']]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      if (finalizar) finalizar.click();
+    } catch (e) { console.error("finalizarInterno erro:", e); }
+  }
+
+  // ---------- Helpers ----------
+  function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  async function esperarEClicar(xpath, intervalo = 120, timeout = 10000) {
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const id = setInterval(() => {
+        const nodes = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+        for (let i = 0; i < nodes.snapshotLength; i++) {
+          const el = nodes.snapshotItem(i);
+          if (el) { clearInterval(id); try { el.click(); } catch (e) {} resolve(); return; }
+        }
+        if (Date.now() - start > timeout) { clearInterval(id); reject(new Error("Timeout esperarEClicar: " + xpath)); }
+      }, intervalo);
+    });
+  }
+
+  async function esperarElemento(xpath, intervalo = 120, timeout = 8000) {
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const id = setInterval(() => {
+        const el = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (el) { clearInterval(id); resolve(el); return; }
+        if (Date.now() - start > timeout) { clearInterval(id); reject(new Error("Timeout esperarElemento: " + xpath)); }
+      }, intervalo);
+    });
+  }
+
+  async function clicarComTentativas(xpathParaClicar, xpathParaVerificar, maxTentativas = 60, intervalo = 120) {
+    for (let i = 0; i < maxTentativas; i++) {
+      const el = document.evaluate(xpathParaClicar, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      if (el) {
+        try { el.click(); } catch (e) {}
+        await sleep(80);
+        const ver = document.evaluate(xpathParaVerificar, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (ver) return;
+      }
+      await sleep(intervalo);
+    }
+    throw new Error("Falha ao clicarComTentativas: " + xpathParaClicar);
+  }
+
+  async function esperarElementoHabilitado(xpath, intervalo = 200, timeout = 10000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const el = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      if (el && !el.classList.contains("ant-select-disabled")) return el;
+      await sleep(intervalo);
+    }
+    throw new Error("Timeout esperarElementoHabilitado: " + xpath);
+  }
+
+})();
