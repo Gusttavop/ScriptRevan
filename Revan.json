@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Máscara de Atendimento (corrigido)
 // @namespace    http://tampermonkey.net/
-// @version      1.4.3
-// @description  Adiciona um botão flutuante que abre um sidebar com overlay controlado por uma variável global.
+// @version      1.4.4
+// @description  Adiciona um botão flutuante que abre um sidebar com overlay controlado por uma variável global. Funções de automação otimizadas.
 // @author       Você
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
@@ -127,9 +127,7 @@
     return `${inicioMensagem}${corpoMensagem}${finalMensagem}`.trim();
   };
 
-  // Funções do Modal movidas para o escopo principal para garantir acessibilidade
-  // e associação correta.
-
+  // Funções do Modal
   function openEditModal() {
     const elements = window.ItemSelectorState.elements;
     if (!elements) return console.error("openEditModal: elements não definido");
@@ -304,8 +302,6 @@
     editButton.textContent = "Editar antes de enviar";
     editButton.className = "edit-button";
     
-    // Não anexamos o listener de clique aqui. Ele será anexado em setupEventListeners para ser mais robusto.
-
     buttonContainer.appendChild(sendButton);
     buttonContainer.appendChild(editButton);
     sidebar.appendChild(buttonContainer);
@@ -342,7 +338,6 @@
     const closeBtn = document.createElement("span");
     closeBtn.className = "close";
     closeBtn.innerHTML = "&times;";
-    // Os listeners do modal serão anexados em setupEventListeners
 
     const modalTitle = document.createElement("h2");
     modalTitle.textContent = "Editar Mensagem Final";
@@ -371,12 +366,10 @@
 
     editModal.appendChild(modalContent);
 
-    // don't append sidebar here - init() will append it (keeps behavior consistent)
     const overlay = document.createElement("div");
     overlay.id = "sidebar-overlay";
     document.body.appendChild(overlay);
 
-    // Também anexar o modal ao body (ou sidebar, mas body é mais seguro para overlay)
     document.body.appendChild(editModal);
 
 
@@ -950,6 +943,42 @@
     document.head.appendChild(style);
   }
 
+  // Funções do Modal
+  function openEditModal() {
+    const elements = window.ItemSelectorState.elements;
+    if (!elements) return console.error("openEditModal: elements não definido");
+    
+    // Prioriza a mensagem já editada ou constrói uma nova se for a primeira abertura
+    const messageToEdit = window.ItemSelectorState.mensagemFinal || window.construirMensagemFinal();
+    
+    elements.editMessageTextarea.value = messageToEdit;
+    elements.editModal.style.display = "block";
+    elements.editMessageTextarea.focus();
+    console.log("Modal de edição aberto.");
+  }
+
+  function closeEditModal() {
+    const elements = window.ItemSelectorState.elements;
+    if (elements?.editModal) elements.editModal.style.display = "none";
+    console.log("Modal de edição fechado.");
+  }
+
+  function saveEdit() {
+    const elements = window.ItemSelectorState.elements;
+    if (!elements) return;
+
+    // 1. Salva o valor da textarea na variável de estado que guarda a mensagem editada
+    window.ItemSelectorState.mensagemFinal = elements.editMessageTextarea.value;
+    
+    // 2. Atualiza a pré-visualização para refletir a nova mensagem salva
+    updatePreview();
+    
+    // 3. Fecha o modal
+    closeEditModal();
+    console.log("Mensagem editada salva no estado.");
+  }
+
+
   function setupEventListeners() {
     const elements = window.ItemSelectorState.elements;
     if (!elements) return console.error("setupEventListeners: elements faltando");
@@ -1054,16 +1083,14 @@
     relationshipSelect.querySelector("select").addEventListener("change", updatePreview);
     observationsTextarea.addEventListener("input", updatePreview);
     
-    // **CORREÇÃO CRÍTICA AQUI:**
-    // Garante que a função openEditModal (agora no escopo principal) é chamada no clique.
-    // Usamos um console.log extra para depuração.
+    // Listener do Modal de Edição
     editButton.addEventListener("click", e => {
       e.preventDefault();
       console.log("Botão 'Editar antes de enviar' clicado.");
       openEditModal(); 
     });
 
-    // Listeners do modal
+    // Listeners dos botões do Modal
     closeBtn.addEventListener("click", closeEditModal);
     saveEditButton.addEventListener("click", saveEdit);
     cancelEditButton.addEventListener("click", closeEditModal);
@@ -1461,7 +1488,7 @@
     try {
       const tagElement = await esperarElemento(
         "//nz-tag[contains(@class, 'editable-tag')]",
-        150,
+        50, // Otimizado: 150ms -> 50ms
         5000
       );
 
@@ -1474,7 +1501,7 @@
 
       const tagInput = await esperarElemento(
         "//*[@id='tags']/div/div/ul/li/input",
-        150,
+        50, // Otimizado: 150ms -> 50ms
         5000
       );
 
@@ -1490,12 +1517,14 @@
       console.log(`Attempting to select tag: ${etiquetaInterna}`);
 
       await esperarEClicar(
-        `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(normalize-space(.), '${etiquetaInterna}')]`
+        `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(normalize-space(.), '${etiquetaInterna}')]`,
+        50, // Otimizado: 150ms -> 50ms
+        10000
       );
 
       await esperarElemento(
         `//li[contains(@class, 'ant-select-selection__choice')]//div[contains(text(), '${etiquetaInterna}')]`,
-        150,
+        50, // Otimizado: 150ms -> 50ms
         5000
       );
 
@@ -1524,7 +1553,8 @@
     const forward = document.getElementById("forward");
     if (forward) forward.click();
 
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Otimizado: 300ms -> 100ms
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     if (document.getElementById("externalCallCheckbox")?.checked) {
       try {
@@ -1537,7 +1567,7 @@
         console.error("Erro ao clicar no switch:", error);
       }
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Otimizado: Remoção de delay (100ms) desnecessário, o próximo await fará o trabalho.
     }
 
     await clicarComTentativas(
@@ -1547,17 +1577,18 @@
 
     await esperarElemento(
       "//ul[contains(@class, 'ant-select-dropdown-menu') and not(contains(@style, 'display: none'))]",
-      150,
+      50, // Otimizado: 150ms -> 50ms
       20000
     );
 
     await esperarEClicar(
       "//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'suporte externo')]",
-      150,
+      50, // Otimizado: 150ms -> 50ms
       20000
     );
 
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Otimizado: 200ms -> 50ms
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     await clicarComTentativas(
       "//nz-select[@id='problem']//input",
@@ -1578,26 +1609,27 @@
 
     await esperarEClicar(
       `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${etiquetaExterno.toLowerCase()}')]`,
-      150,
+      50, // Otimizado: 150ms -> 50ms
       20000
     );
 
     await esperarElemento(
       `//li[contains(@class, 'ant-select-selection__choice')]//div[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${etiquetaExterno.toLowerCase()}')]`,
-      150,
+      50, // Otimizado: 150ms -> 50ms
       20000
     );
 
     const servicoExterno = window.ItemSelectorState.selectedItem.servico || "";
 
-    await esperarElementoHabilitado("//nz-select[@id='service']", 500, 20000);
+    await esperarElementoHabilitado("//nz-select[@id='service']", 50, 20000); // Otimizado: 500ms -> 50ms
 
     await clicarComTentativas(
       "//nz-select[@id='problem']//input",
       "//ul[contains(@class, 'ant-select-dropdown-menu')]"
     );
 
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Otimizado: 200ms -> 50ms
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     await clicarComTentativas(
       "//nz-select[@id='service']//input",
@@ -1617,11 +1649,15 @@
     }
 
     await esperarEClicar(
-      `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`
+      `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`,
+      50, // Otimizado: 150ms -> 50ms
+      10000
     );
 
     await esperarElemento(
-      `//div[contains(@class, 'ant-select-selection-selected-value') and contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`
+      `//div[contains(@class, 'ant-select-selection-selected-value') and contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`,
+      50, // Otimizado: 150ms -> 50ms
+      10000
     );
 
     const continuar = document.querySelector('[data-testid="btn-Continuar"]');
@@ -1642,7 +1678,10 @@
       )
       .singleNodeValue;
     if (item) item.click();
-    const tituloInput = document.getElementById("titulo");
+    
+    // Otimizado: Uso de esperarElemento para garantir que o modal abriu e o input está pronto
+    const tituloInput = await esperarElemento("#titulo", 50, 5000); 
+
     if (tituloInput) {
       tituloInput.click();
       tituloInput.value = "Fazer retorno";
@@ -1662,24 +1701,25 @@
 
   // Função para finalizar caso interno
   async function finalizarInterno() {
-    await new Promise(resolve => setTimeout(resolve, 400));
+    // Otimizado: 400ms -> 100ms
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     const more = document.querySelector(".more");
     if (more) more.click();
-    const finalizar = document
-      .evaluate(
+    
+    // Otimizado: Usando esperarElemento para o item 'Finalizar'
+    const finalizar = await esperarElemento(
         "//nz-list-item[span[text()='Finalizar']]",
-        document,
-        null,
-        XPathResult.FIRST_ORDERED_NODE_TYPE,
-        null
-      )
-      .singleNodeValue;
+        50,
+        5000
+    );
+
     if (finalizar) finalizar.click();
   }
 
   // Função auxiliar para esperar e clicar em um elemento
-  async function esperarEClicar(xpath, intervalo = 150, timeout = 10000) {
+  // Otimizado: Default intervalo = 50ms
+  async function esperarEClicar(xpath, intervalo = 50, timeout = 10000) {
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
       const intervalId = setInterval(() => {
@@ -1709,7 +1749,8 @@
     });
   }
 
-  async function esperarElemento(xpath, intervalo = 150, timeout = 10000) {
+  // Otimizado: Default intervalo = 50ms
+  async function esperarElemento(xpath, intervalo = 50, timeout = 10000) {
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
       const intervalId = setInterval(() => {
@@ -1732,11 +1773,12 @@
   }
 
   // Nova função auxiliar para clicar com tentativas
+  // Otimizado: Default intervalo reduzido para 100ms (era 200ms)
   async function clicarComTentativas(
     xpathParaClicar,
     xpathParaVerificar,
     maxTentativas = 60,
-    intervalo = 200
+    intervalo = 100 // Otimizado: 200ms -> 100ms
   ) {
     for (let i = 0; i < maxTentativas; i++) {
       const elementoParaClicar = document.evaluate(
@@ -1749,6 +1791,7 @@
       if (elementoParaClicar) {
         elementoParaClicar.click();
 
+        // Pausa de 100ms após o clique é mantida por segurança para renderização do Angular/Ant Design
         await new Promise(resolve => setTimeout(resolve, 100));
 
         const elementoVerificacao = document.evaluate(
@@ -1770,9 +1813,10 @@
     throw new Error("Falha ao clicar no input do sector após várias tentativas.");
   }
 
+  // Otimizado: Default intervalo = 50ms
   async function esperarElementoHabilitado(
     xpath,
-    intervalo = 500,
+    intervalo = 50, // Otimizado: 500ms -> 50ms
     timeout = 10000
   ) {
     const startTime = Date.now();
@@ -1792,9 +1836,10 @@
     throw new Error(`Timeout esperando pelo elemento habilitado: ${xpath}`);
   }
 
+  // Otimizado: Default intervalo = 50ms
   async function esperarElementoClicavel(
     xpath,
-    intervalo = 150,
+    intervalo = 50,
     timeout = 10000
   ) {
     return await esperarElemento(xpath, intervalo, timeout);
