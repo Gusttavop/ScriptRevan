@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.4.5
 // @description  Adiciona um botão flutuante que abre um sidebar com overlay controlado por uma variável global. Funções de automação otimizadas e confirmação final automática.
-// @author       Você
+// @author       Gustavo
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
 // ==/UserScript==
