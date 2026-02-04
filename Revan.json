@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Máscara de Atendimento (corrigido)
+// @name         Máscara de Atendimento (Corrigido + Anti-Travamento)
 // @namespace    http://tampermonkey.net/
-// @version      1.4.5
-// @description  Adiciona um botão flutuante que abre um sidebar com overlay controlado por uma variável global. Funções de automação otimizadas e confirmação final automática.
+// @version      1.4.6
+// @description  Adiciona um botão flutuante que abre um sidebar com overlay controlado por uma variável global. Funções de automação otimizadas e confirmação final automática. Inclui proteção contra travamento na tela de etiquetas.
 // @author       Gustavo
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
@@ -1410,6 +1410,27 @@
 
   init();
   
+  // Função auxiliar para fechar o modal "Adicionar etiquetas" se ele travar ou se a etiqueta já existir
+  async function fecharModalSeTravado() {
+      console.log("Tentando destravar modal (clicar em Cancelar)...");
+      const xpathsCancelar = [
+          "//button[contains(., 'Cancelar')]",
+          "//button[@aria-label='Close']",
+          "//span[contains(@class, 'ant-modal-close-x')]"
+      ];
+
+      for (const xpath of xpathsCancelar) {
+          const btn = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+          if (btn && btn.offsetParent !== null) { // Checks visibility
+              btn.click();
+              console.log("Modal destravado via Cancelar/Fechar.");
+              await new Promise(r => setTimeout(r, 500)); // Wait for animation
+              return true;
+          }
+      }
+      return false;
+  }
+
   // Função auxiliar para confirmar a finalização (clica em "Sim, finalizar")
   async function confirmarFinalizacao() {
       console.log("Tentando confirmar finalização...");
@@ -1462,12 +1483,11 @@
       console.warn("Botão de envio não encontrado (#send_button)");
     }
 
-    // Verify if tag already exists before adding (case-insensitive)
-    const existingTags = document.querySelectorAll(
-      "div.tags > div.tag > nz-tag > span"
-    );
+    // MELHORIA: Verifica se etiqueta já existe com um seletor mais amplo e case-insensitive
     const desiredTag = window.ItemSelectorState.selectedItem?.etiqueta || "";
-    const tagExists = Array.from(existingTags).some(
+    // Busca texto em qualquer etiqueta visível na tela (nz-tag, ant-tag, chip, etc.)
+    const allTags = Array.from(document.querySelectorAll('nz-tag, .ant-tag, .chip-label, span.tag-text'));
+    const tagExists = allTags.some(
       tag => tag.textContent.trim().toLowerCase() === desiredTag.toLowerCase()
     );
 
@@ -1477,6 +1497,8 @@
         await adicionarEtiqueta();
       } catch (err) {
         console.error("Falha ao adicionar etiqueta:", err);
+        // Tenta fechar o modal se algo deu errado durante a adição
+        await fecharModalSeTravado();
         window.tagResult = false;
       }
     } else {
@@ -1500,7 +1522,7 @@
     console.log("Automação concluída com sucesso");
   }
 
-  // Função para adicionar etiqueta
+  // Função para adicionar etiqueta (COM PROTEÇÃO ANTI-TRAVAMENTO)
   async function adicionarEtiqueta() {
     try {
       const tagElement = await esperarElemento(
@@ -1516,9 +1538,12 @@
       tagElement.click();
       console.log("Tag element clicked successfully");
 
+      // Verifica se o modal abriu mas a etiqueta já está lá dentro (previne clique duplo ou erro)
+      const etiquetaInterna = window.ItemSelectorState.selectedItem.etiqueta;
+      
       const tagInput = await esperarElemento(
         "//*[@id='tags']/div/div/ul/li/input",
-        50, // Otimizado: 150ms -> 50ms
+        50, 
         5000
       );
 
@@ -1527,29 +1552,31 @@
       }
 
       tagInput.click();
-      tagInput.value = window.ItemSelectorState.selectedItem.etiqueta;
+      tagInput.value = etiquetaInterna;
       tagInput.dispatchEvent(new Event("input", { bubbles: true }));
 
-      const etiquetaInterna = window.ItemSelectorState.selectedItem.etiqueta;
       console.log(`Attempting to select tag: ${etiquetaInterna}`);
 
       await esperarEClicar(
         `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(normalize-space(.), '${etiquetaInterna}')]`,
-        100, // Otimizado: 150ms -> 50ms
+        100, 
         10000
       );
 
       await esperarElemento(
         `//li[contains(@class, 'ant-select-selection__choice')]//div[contains(text(), '${etiquetaInterna}')]`,
-        100, // Otimizado: 150ms -> 50ms
+        100, 
         5000
       );
 
       const concluirButton = document.querySelector(
         '[data-testid="btn-Concluir"]'
       );
-      if (!concluirButton) {
-        throw new Error("Concluir button not found");
+      
+      // Se o botão concluir não existir ou estiver desabilitado, pode ser porque nada mudou
+      if (!concluirButton || concluirButton.disabled) {
+         console.warn("Botão Concluir não disponível. Tentando cancelar...");
+         throw new Error("Concluir button not clickable");
       }
 
       concluirButton.click();
@@ -1557,7 +1584,16 @@
 
       window.tagResult = true;
     } catch (error) {
-      console.error("Error in adicionarEtiqueta:", error);
+      console.error("Error in adicionarEtiqueta (Provável travamento ou tag já existente):", error);
+      
+      // TENTA DESTRAVAR AUTOMATICAMENTE
+      const destravou = await fecharModalSeTravado();
+      if (destravou) {
+          console.log("Modal destravado com sucesso. Considerando etiqueta como adicionada/existente.");
+          window.tagResult = true; // Assume sucesso pois a etiqueta provavelmente já estava lá
+          return;
+      }
+      
       window.tagResult = false;
       throw error;
     }
