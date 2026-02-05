@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Máscara de Atendimento (Corrigido V2 - Anti-Travamento Proativo)
+// @name         Máscara de Atendimento (V1.4.9 - Turbo Seguro)
 // @namespace    http://tampermonkey.net/
-// @version      1.4.7
-// @description  Adiciona automação com verificação proativa dentro do modal de etiquetas para evitar esperas desnecessárias (timeouts).
+// @version      1.4.9
+// @description  Automação otimizada: reduz esperas desnecessárias mantendo a verificação de segurança da etiqueta.
 // @author       Gustavo
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
@@ -667,7 +667,7 @@
   async function confirmarFinalizacao() {
       try {
           const xpathConfirmar = "//button[span[contains(text(), 'Sim, finalizar')]]";
-          await esperarEClicar(xpathConfirmar, 50, 5000); // Timeout reduzido de 10s para 5s
+          await esperarEClicar(xpathConfirmar, 100, 8000); 
           console.log("Confirmação de finalização efetuada.");
       } catch (error) { }
   }
@@ -706,6 +706,22 @@
       window.tagResult = true;
     }
 
+    // --- LOOP DE SEGURANÇA: ESPERA A ETIQUETA APARECER ANTES DE CONTINUAR ---
+    if (desiredTag) {
+        let tagConfirmada = false;
+        // Tenta verificar 5 vezes a cada 100ms (antes era 300ms, agora é mais rápido)
+        for (let i = 0; i < 5; i++) {
+            const currentTags = Array.from(document.querySelectorAll('nz-tag, .ant-tag, .chip-label, span.tag-text, .tag'));
+            if (currentTags.some(t => t.textContent.trim().toLowerCase() === desiredTag.toLowerCase())) {
+                tagConfirmada = true;
+                break;
+            }
+            await new Promise(r => setTimeout(r, 100)); // Verifica mais rápido (100ms)
+        }
+        if (!tagConfirmada) console.warn("Aviso: Etiqueta pode não ter sido aplicada corretamente antes da finalização.");
+    }
+    // -------------------------------------------------------------------------
+
     if (window.ItemSelectorState.selectedItem?.externo) {
       await finalizarExterno();
       await confirmarFinalizacao();
@@ -718,7 +734,6 @@
     console.log("Automação concluída.");
   }
 
-  // --- FUNÇÃO CRÍTICA CORRIGIDA PARA EVITAR TRAVAMENTOS ---
   async function adicionarEtiqueta() {
     try {
       const tagElement = await esperarElemento("//nz-tag[contains(@class, 'editable-tag')]", 100, 5000);
@@ -727,28 +742,22 @@
       const etiquetaInterna = window.ItemSelectorState.selectedItem.etiqueta;
       const tagInput = await esperarElemento("//*[@id='tags']/div/div/ul/li/input", 50, 5000);
 
-      // --- NOVA VERIFICAÇÃO PREVENTIVA DENTRO DO MODAL ---
-      // Antes de digitar, verifica se a etiqueta JÁ ESTÁ selecionada na lista de itens do input
-      // Isso evita que o script tente buscar algo que não está mais no dropdown (pq já foi selecionado)
+      // Verificação preventiva dentro do modal
       const labelsSelecionadas = Array.from(document.querySelectorAll('.ant-select-selection__choice__content, .ant-select-selection__choice'));
-      const jaTemATag = labelsSelecionadas.some(el => el.textContent.includes(etiquetaInterna));
-
-      if (jaTemATag) {
-          console.log("Etiqueta já detectada dentro do modal (preventivo). Cancelando/Fechando.");
+      if (labelsSelecionadas.some(el => el.textContent.includes(etiquetaInterna))) {
+          console.log("Etiqueta já detectada dentro do modal (preventivo). Fechando.");
           await fecharModalSeTravado();
           window.tagResult = true;
-          return; // Sai da função com sucesso
+          return;
       }
-      // ----------------------------------------------------
 
       tagInput.click();
       tagInput.value = etiquetaInterna;
       tagInput.dispatchEvent(new Event("input", { bubbles: true }));
 
-      // Tenta clicar na opção do dropdown. Se falhar (timeout), assume que é porque já existe ou erro, e cai no catch.
       await esperarEClicar(
         `//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(normalize-space(.), '${etiquetaInterna}')]`,
-        100, 3000 // Timeout reduzido para 3s para não ficar travado muito tempo
+        100, 5000 
       );
 
       await esperarElemento(
@@ -761,13 +770,17 @@
          throw new Error("Botão concluir indisponível");
       }
       concluirButton.click();
+      
+      // TEMPO REDUZIDO: de 500ms para 200ms após clicar em concluir
+      await new Promise(r => setTimeout(r, 200));
+      
       window.tagResult = true;
 
     } catch (error) {
       console.warn("Erro no fluxo de etiqueta. Tentando destravar...", error);
       const destravou = await fecharModalSeTravado();
       if (destravou) {
-          window.tagResult = true; // Assume sucesso se conseguiu cancelar (significa que já devia estar lá)
+          window.tagResult = true; 
           return;
       }
       window.tagResult = false;
@@ -778,7 +791,7 @@
   async function finalizarExterno() {
     const etiquetaExterno = window.ItemSelectorState.selectedItem.etiqueta_externo || "";
     document.getElementById("forward")?.click();
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 150)); // Reduzido de 300 para 150
 
     if (document.getElementById("externalCallCheckbox")?.checked) {
       try { await clicarComTentativas('//lib-input-switch//button[@class="ant-switch"]', '//lib-input-switch//button[@class="ant-switch ant-switch-checked"]'); } catch (e) {}
@@ -787,7 +800,7 @@
     await clicarComTentativas("//nz-select[@id='sector']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
     await esperarElemento("//ul[contains(@class, 'ant-select-dropdown-menu') and not(contains(@style, 'display: none'))]", 100, 20000);
     await esperarEClicar("//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'suporte externo')]", 100, 20000);
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 100)); // Reduzido de 200 para 100
 
     await clicarComTentativas("//nz-select[@id='problem']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
     const problemInput = document.evaluate("//nz-select[@id='problem']//input", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
@@ -819,7 +832,8 @@
   }
 
   async function finalizarInterno() {
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // TEMPO OTIMIZADO: Reduzido de 800ms para 350ms
+    await new Promise(resolve => setTimeout(resolve, 350)); 
     document.querySelector(".more")?.click();
     const finalizar = await esperarElemento("//nz-list-item[span[text()='Finalizar']]", 50, 5000);
     finalizar?.click();
