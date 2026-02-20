@@ -54,9 +54,8 @@
         speaker: elements.speakerInput.value || "",
         relationship: elements.relationshipSelect.querySelector("select").value || "",
         observations: elements.observationsTextarea.value || "",
-        isExternalCall: !!elements.externalCallCheckbox.querySelector("input").checked,
-        hasReminder: !!elements.reminderCheckbox.querySelector("input").checked,
-        isImportant: !!elements.importantCheckbox.querySelector("input").checked,
+        isAguardar: !!elements.aguardarCheckbox.querySelector("input").checked,
+        isFinalizar: !!elements.finalizarCheckbox.querySelector("input").checked,
         finalMessage: window.construirMensagemFinal(),
       };
     },
@@ -155,17 +154,15 @@
     specTitle.textContent = "Especificações do problema";
     specificationSection.appendChild(specTitle);
 
-    const externalCallCheckbox = createCheckbox("externalCallCheckbox", "Aguardar chamado externo?");
-    externalCallCheckbox.style.display = "none";
-    specificationSection.appendChild(externalCallCheckbox);
+    // Caixa de Aguardar
+    const aguardarCheckbox = createCheckbox("aguardarCheckbox", "Aguardar chamado");
+    aguardarCheckbox.style.display = "none";
+    specificationSection.appendChild(aguardarCheckbox);
 
-    const reminderCheckbox = createCheckbox("reminderCheckbox", "Finalizar com lembrete");
-    reminderCheckbox.style.display = "none";
-    specificationSection.appendChild(reminderCheckbox);
-
-    const importantCheckbox = createCheckbox("importantCheckbox", "Chamado importante");
-    importantCheckbox.style.display = "none";
-    specificationSection.appendChild(importantCheckbox);
+    // Nova caixa de Finalizar chamado (substitui o importante)
+    const finalizarCheckbox = createCheckbox("finalizarCheckbox", "Finalizar chamado");
+    finalizarCheckbox.style.display = "none";
+    specificationSection.appendChild(finalizarCheckbox);
 
     const observationsTextarea = document.createElement("textarea");
     observationsTextarea.id = "observationsTextarea";
@@ -281,7 +278,7 @@
     document.body.appendChild(overlay);
     document.body.appendChild(editModal);
 
-    return { sidebar, searchInput, clearButton, dropdown, overlay, specificationSection, externalCallCheckbox, reminderCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sendButton, editButton, previewSection, internalLabelPreview, externalLabelPreview, finalMessagePreview, editModal, editMessageTextarea, saveEditButton, cancelEditButton, closeBtn };
+    return { sidebar, searchInput, clearButton, dropdown, overlay, specificationSection, aguardarCheckbox, finalizarCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sendButton, editButton, previewSection, internalLabelPreview, externalLabelPreview, finalMessagePreview, editModal, editMessageTextarea, saveEditButton, cancelEditButton, closeBtn };
   }
 
   function createCheckbox(id, label) {
@@ -390,7 +387,7 @@
   function setupEventListeners() {
     const elements = window.ItemSelectorState.elements;
     if (!elements) return;
-    const { searchInput, clearButton, dropdown, overlay, externalCallCheckbox, reminderCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sidebar, editButton, closeBtn, saveEditButton, cancelEditButton } = elements;
+    const { searchInput, clearButton, dropdown, overlay, aguardarCheckbox, finalizarCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sidebar, editButton, closeBtn, saveEditButton, cancelEditButton } = elements;
 
     const openSidebarBtn = document.getElementById("openSidebarBtn");
     if (openSidebarBtn) {
@@ -441,9 +438,16 @@
       }
     });
 
-    externalCallCheckbox.querySelector("input").addEventListener("change", updatePreview);
-    reminderCheckbox.querySelector("input").addEventListener("change", updatePreview);
-    importantCheckbox.querySelector("input").addEventListener("change", updatePreview);
+    // Lógica para as checkboxes se desmarcarem mutuamente
+    aguardarCheckbox.querySelector("input").addEventListener("change", e => {
+        if (e.target.checked) finalizarCheckbox.querySelector("input").checked = false;
+        updatePreview();
+    });
+
+    finalizarCheckbox.querySelector("input").addEventListener("change", e => {
+        if (e.target.checked) aguardarCheckbox.querySelector("input").checked = false;
+        updatePreview();
+    });
 
     holderCheckbox.querySelector("input").addEventListener("change", e => {
       speakerInput.style.display = e.target.checked ? "none" : "block";
@@ -578,19 +582,26 @@
     elements.searchInput.style.borderRadius = "10px";
     elements.specificationSection.style.display = "block";
 
-    if (item.externo) {
-      elements.externalCallCheckbox.style.display = "block";
-      elements.reminderCheckbox.style.display = "none";
-      const cb = elements.externalCallCheckbox.querySelector("input");
-      if (cb) cb.checked = !!item.aguardar;
-    } else {
-      elements.externalCallCheckbox.style.display = "none";
-      elements.reminderCheckbox.style.display = "block";
-      const cb = elements.reminderCheckbox.querySelector("input");
-      if (cb) cb.checked = !!item.lembrete;
+    // Mostra as duas caixas
+    elements.aguardarCheckbox.style.display = "block";
+    elements.finalizarCheckbox.style.display = "block";
+    
+    const cbAguardar = elements.aguardarCheckbox.querySelector("input");
+    const cbFinalizar = elements.finalizarCheckbox.querySelector("input");
+    
+    if (cbAguardar && cbFinalizar) {
+        const tituloLower = item.titulo ? item.titulo.toLowerCase() : "";
+        const isAguardarPadrao = item.aguardar || 
+                                 tituloLower.includes("comodo") || 
+                                 tituloLower.includes("cômodo") || 
+                                 tituloLower.includes("estruturada");
+        
+        // Se for de aguardar, marca "Aguardar" e desmarca "Finalizar".
+        // Caso contrário, marca "Finalizar" e desmarca "Aguardar".
+        cbAguardar.checked = !!isAguardarPadrao;
+        cbFinalizar.checked = !isAguardarPadrao;
     }
 
-    elements.importantCheckbox.style.display = "block";
     elements.observationsTextarea.style.display = "block";
     elements.buttonContainer.style.display = "flex";
     elements.previewSection.style.display = "block";
@@ -626,9 +637,8 @@
     const elements = window.ItemSelectorState.elements;
     if (!elements) return;
     try {
-      elements.externalCallCheckbox.querySelector("input").checked = false;
-      elements.reminderCheckbox.querySelector("input").checked = false;
-      elements.importantCheckbox.querySelector("input").checked = false;
+      elements.aguardarCheckbox.querySelector("input").checked = false;
+      elements.finalizarCheckbox.querySelector("input").checked = false;
       elements.holderCheckbox.querySelector("input").checked = true;
     } catch (e) {}
     elements.speakerInput.value = "";
@@ -671,6 +681,16 @@
           console.log("Confirmação de finalização efetuada.");
       } catch (error) { }
   }
+  
+  async function confirmarAguardar() {
+      try {
+          const xpathConfirmar = "//button[span[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'sim')]] | //button[span[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'aguardar')]]";
+          await esperarEClicar(xpathConfirmar, 100, 4000);
+          console.log("Confirmação de aguardar efetuada.");
+      } catch (error) { 
+          console.log("Não precisou de confirmação ou precisa de preenchimento manual de motivo.");
+      }
+  }
 
   async function executarAutomacao() {
     closeSidebar();
@@ -684,11 +704,12 @@
       textArea.dispatchEvent(new Event("input", { bubbles: true }));
     }
 
-    if (document.getElementById("importantCheckbox")?.checked) document.getElementById("important")?.click();
+    // Apenas clica em enviar mensagem, para ela ir para a timeline do chamado
     document.getElementById("send_button")?.click();
 
     // Verificação de etiqueta mais robusta e case-insensitive
     const desiredTag = window.ItemSelectorState.selectedItem?.etiqueta || "";
+    const isExterno = window.ItemSelectorState.selectedItem?.externo; // Variável que checa se é externo
     const allTags = Array.from(document.querySelectorAll('nz-tag, .ant-tag, .chip-label, span.tag-text, .tag'));
     const tagExists = allTags.some(tag => tag.textContent.trim().toLowerCase() === desiredTag.toLowerCase());
 
@@ -706,32 +727,54 @@
       window.tagResult = true;
     }
 
-    // --- LOOP DE SEGURANÇA: ESPERA A ETIQUETA APARECER ANTES DE CONTINUAR ---
-    if (desiredTag) {
+    // --- LOOP DE SEGURANÇA: ESPERA A ETIQUETA ---
+    if (desiredTag && !isExterno) {
+        // Se for INTERNO (fechamento direto), faz o loop rigoroso para não dar erro
         let tagConfirmada = false;
-        // Tenta verificar 5 vezes a cada 100ms (antes era 300ms, agora é mais rápido)
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 10; i++) {
             const currentTags = Array.from(document.querySelectorAll('nz-tag, .ant-tag, .chip-label, span.tag-text, .tag'));
             if (currentTags.some(t => t.textContent.trim().toLowerCase() === desiredTag.toLowerCase())) {
                 tagConfirmada = true;
+                await new Promise(r => setTimeout(r, 300)); 
                 break;
             }
-            await new Promise(r => setTimeout(r, 100)); // Verifica mais rápido (100ms)
+            await new Promise(r => setTimeout(r, 150)); 
         }
-        if (!tagConfirmada) console.warn("Aviso: Etiqueta pode não ter sido aplicada corretamente antes da finalização.");
+        if (!tagConfirmada) console.warn("Aviso: Etiqueta pode não ter sido confirmada antes da finalização.");
+    } else if (desiredTag && isExterno) {
+        // Se for EXTERNO, espera apenas uma fração de segundo
+        await new Promise(r => setTimeout(r, 150));
     }
     // -------------------------------------------------------------------------
 
-    if (window.ItemSelectorState.selectedItem?.externo) {
-      await finalizarExterno();
-      await confirmarFinalizacao();
-    } else if (document.getElementById("reminderCheckbox")?.checked) {
-      await adicionarLembrete();
+    const querAguardar = document.getElementById("aguardarCheckbox")?.checked;
+    const querFinalizar = document.getElementById("finalizarCheckbox")?.checked;
+
+    if (querAguardar) {
+      // Se optou por AGUARDAR
+      if (isExterno) {
+        await finalizarExterno(true); // Envia para externo com switch de aguardar
+        await confirmarFinalizacao();
+      } else {
+        await colocarEmAguardar();
+        await confirmarAguardar();
+      }
+    } else if (querFinalizar) {
+      // Se optou por FINALIZAR
+      if (isExterno) {
+        await finalizarExterno(false); // Envia para externo sem switch de aguardar
+        await confirmarFinalizacao();
+      } else {
+        await finalizarInterno();
+        await confirmarFinalizacao();
+      }
     } else {
-      await finalizarInterno();
-      await confirmarFinalizacao();
+      // Se NENHUM dos dois estiver marcado
+      console.log("Nenhuma ação de encerramento marcada. Apenas etiqueta e mensagem inseridas.");
     }
-    console.log("Automação concluída.");
+    
+    // Reseta a seleção e os campos para o próximo chamado
+    window.ItemSelectorState.elements.clearButton.click();
   }
 
   async function adicionarEtiqueta() {
@@ -742,7 +785,6 @@
       const etiquetaInterna = window.ItemSelectorState.selectedItem.etiqueta;
       const tagInput = await esperarElemento("//*[@id='tags']/div/div/ul/li/input", 50, 5000);
 
-      // Verificação preventiva dentro do modal
       const labelsSelecionadas = Array.from(document.querySelectorAll('.ant-select-selection__choice__content, .ant-select-selection__choice'));
       if (labelsSelecionadas.some(el => el.textContent.includes(etiquetaInterna))) {
           console.log("Etiqueta já detectada dentro do modal (preventivo). Fechando.");
@@ -771,8 +813,7 @@
       }
       concluirButton.click();
       
-      // TEMPO REDUZIDO: de 500ms para 200ms após clicar em concluir
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 500));
       
       window.tagResult = true;
 
@@ -788,19 +829,19 @@
     }
   }
 
-  async function finalizarExterno() {
+  async function finalizarExterno(querAguardar) {
     const etiquetaExterno = window.ItemSelectorState.selectedItem.etiqueta_externo || "";
     document.getElementById("forward")?.click();
-    await new Promise(resolve => setTimeout(resolve, 150)); // Reduzido de 300 para 150
+    await new Promise(resolve => setTimeout(resolve, 150)); 
 
-    if (document.getElementById("externalCallCheckbox")?.checked) {
+    if (querAguardar) {
       try { await clicarComTentativas('//lib-input-switch//button[@class="ant-switch"]', '//lib-input-switch//button[@class="ant-switch ant-switch-checked"]'); } catch (e) {}
     }
 
     await clicarComTentativas("//nz-select[@id='sector']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
     await esperarElemento("//ul[contains(@class, 'ant-select-dropdown-menu') and not(contains(@style, 'display: none'))]", 100, 20000);
     await esperarEClicar("//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'suporte externo')]", 100, 20000);
-    await new Promise(resolve => setTimeout(resolve, 100)); // Reduzido de 200 para 100
+    await new Promise(resolve => setTimeout(resolve, 100)); 
 
     await clicarComTentativas("//nz-select[@id='problem']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
     const problemInput = document.evaluate("//nz-select[@id='problem']//input", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
@@ -821,18 +862,14 @@
     document.querySelector('[data-testid="btn-Continuar"]')?.click();
   }
 
-  async function adicionarLembrete() {
+  async function colocarEmAguardar() {
+    await new Promise(resolve => setTimeout(resolve, 350));
     document.querySelector(".more")?.click();
-    const item = document.evaluate("//nz-list-item[span[text()='Adicionar lembrete']]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    item?.click();
-    const tituloInput = await esperarElemento("#titulo", 50, 5000);
-    if (tituloInput) { tituloInput.click(); tituloInput.value = "Fazer retorno"; tituloInput.dispatchEvent(new Event("input", { bubbles: true })); }
-    const concluir = document.evaluate("//span[contains(text(), 'Concluir')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    concluir?.click();
+    const btnAguardar = await esperarElemento("//nz-list-item[span[text()='Aguardar']]", 50, 5000);
+    btnAguardar?.click();
   }
 
   async function finalizarInterno() {
-    // TEMPO OTIMIZADO: Reduzido de 800ms para 350ms
     await new Promise(resolve => setTimeout(resolve, 350)); 
     document.querySelector(".more")?.click();
     const finalizar = await esperarElemento("//nz-list-item[span[text()='Finalizar']]", 50, 5000);
