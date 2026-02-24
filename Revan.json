@@ -589,13 +589,28 @@
     
     if (cbAguardar && cbFinalizar) {
         const tituloLower = item.titulo ? item.titulo.toLowerCase() : "";
+        const isExterno = !!item.externo;
+        
+        // Verifica se é um problema clássico de AGUARDAR
         const isAguardarPadrao = item.aguardar || 
                                  tituloLower.includes("comodo") || 
                                  tituloLower.includes("cômodo") || 
                                  tituloLower.includes("estruturada");
         
-        cbAguardar.checked = !!isAguardarPadrao;
-        cbFinalizar.checked = !isAguardarPadrao;
+        // REGRAS DEFINITIVAS DE PADRÃO:
+        if (isAguardarPadrao) {
+            // Se for de aguardar, só marca "Aguardar"
+            cbAguardar.checked = true;
+            cbFinalizar.checked = false;
+        } else if (!isExterno) {
+            // Se for INTERNO e não for de aguardar (ex: Lentidão, Hibernação), marca "Finalizar"
+            cbAguardar.checked = false;
+            cbFinalizar.checked = true;
+        } else {
+            // Se for EXTERNO comum (ex: LOS), deixa tudo DESMARCADO para fluir para o externo naturalmente
+            cbAguardar.checked = false;
+            cbFinalizar.checked = false;
+        }
     }
 
     elements.observationsTextarea.style.display = "block";
@@ -707,8 +722,7 @@
     const querAguardar = document.getElementById("aguardarCheckbox")?.checked;
     const querFinalizar = document.getElementById("finalizarCheckbox")?.checked;
     
-    // VARIÁVEL CHAVE ATUALIZADA:
-    // Se "Finalizar" estiver marcado, vira uma ordem absoluta para fechar o chamado direto
+    // O script só será cauteloso com a etiqueta SE ele for fechar o chamado de vez na mesma tela
     const isFinalizandoInterno = querFinalizar;
 
     const allTags = Array.from(document.querySelectorAll('nz-tag, .ant-tag, .chip-label, span.tag-text, .tag'));
@@ -735,18 +749,19 @@
             const currentTags = Array.from(document.querySelectorAll('nz-tag, .ant-tag, .chip-label, span.tag-text, .tag'));
             if (currentTags.some(t => t.textContent.trim().toLowerCase() === desiredTag.toLowerCase())) {
                 tagConfirmada = true;
-                await new Promise(r => setTimeout(r, 200)); // Pequeno respiro só ao finalizar
+                await new Promise(r => setTimeout(r, 200)); 
                 break;
             }
             await new Promise(r => setTimeout(r, 100)); 
         }
         if (!tagConfirmada) console.warn("Aviso: Etiqueta não confirmada antes da finalização.");
     } else if (desiredTag) {
-        await new Promise(r => setTimeout(r, 50)); // Super rápido se não estiver finalizando
+        await new Promise(r => setTimeout(r, 50)); 
     }
 
-    // Lógica de roteamento atualizada com Override
+    // --- LÓGICA DE AÇÃO DE ENCERRAMENTO ---
     if (querAguardar) {
+      // Optou por Aguardar
       if (isExterno) {
         await finalizarExterno(true); 
         await confirmarFinalizacao();
@@ -755,11 +770,19 @@
         await confirmarAguardar();
       }
     } else if (querFinalizar) {
-      // Se marcou 'Finalizar chamado', ignora se é externo e finaliza na tela atual!
+      // Optou por Finalizar (FORÇA o fechamento interno ignorando se é externo)
       await finalizarInterno();
       await confirmarFinalizacao();
     } else {
-      console.log("Nenhuma ação de encerramento marcada. Apenas etiqueta e mensagem inseridas.");
+      // Deixou tudo desmarcado
+      if (isExterno) {
+        // Se for externo (ex: LOS), segue o fluxo de abrir externo!
+        await finalizarExterno(false);
+        await confirmarFinalizacao();
+      } else {
+        // Se for interno, apenas deixa a mensagem e não faz mais nada.
+        console.log("Nenhuma ação de encerramento marcada em chamado interno. Apenas etiqueta e mensagem inseridas.");
+      }
     }
     
     window.ItemSelectorState.elements.clearButton.click();
