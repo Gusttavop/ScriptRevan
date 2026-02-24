@@ -591,23 +591,18 @@
         const tituloLower = item.titulo ? item.titulo.toLowerCase() : "";
         const isExterno = !!item.externo;
         
-        // Verifica se é um problema clássico de AGUARDAR
         const isAguardarPadrao = item.aguardar || 
                                  tituloLower.includes("comodo") || 
                                  tituloLower.includes("cômodo") || 
                                  tituloLower.includes("estruturada");
         
-        // REGRAS DEFINITIVAS DE PADRÃO:
         if (isAguardarPadrao) {
-            // Se for de aguardar, só marca "Aguardar"
             cbAguardar.checked = true;
             cbFinalizar.checked = false;
         } else if (!isExterno) {
-            // Se for INTERNO e não for de aguardar (ex: Lentidão, Hibernação), marca "Finalizar"
             cbAguardar.checked = false;
             cbFinalizar.checked = true;
         } else {
-            // Se for EXTERNO comum (ex: LOS), deixa tudo DESMARCADO para fluir para o externo naturalmente
             cbAguardar.checked = false;
             cbFinalizar.checked = false;
         }
@@ -722,7 +717,6 @@
     const querAguardar = document.getElementById("aguardarCheckbox")?.checked;
     const querFinalizar = document.getElementById("finalizarCheckbox")?.checked;
     
-    // O script só será cauteloso com a etiqueta SE ele for fechar o chamado de vez na mesma tela
     const isFinalizandoInterno = querFinalizar;
 
     const allTags = Array.from(document.querySelectorAll('nz-tag, .ant-tag, .chip-label, span.tag-text, .tag'));
@@ -742,7 +736,6 @@
       window.tagResult = true;
     }
 
-    // --- LOOP DE SEGURANÇA MÍNIMO ---
     if (desiredTag && isFinalizandoInterno) {
         let tagConfirmada = false;
         for (let i = 0; i < 10; i++) {
@@ -759,9 +752,7 @@
         await new Promise(r => setTimeout(r, 50)); 
     }
 
-    // --- LÓGICA DE AÇÃO DE ENCERRAMENTO ---
     if (querAguardar) {
-      // Optou por Aguardar
       if (isExterno) {
         await finalizarExterno(true); 
         await confirmarFinalizacao();
@@ -770,17 +761,13 @@
         await confirmarAguardar();
       }
     } else if (querFinalizar) {
-      // Optou por Finalizar (FORÇA o fechamento interno ignorando se é externo)
       await finalizarInterno();
       await confirmarFinalizacao();
     } else {
-      // Deixou tudo desmarcado
       if (isExterno) {
-        // Se for externo (ex: LOS), segue o fluxo de abrir externo!
         await finalizarExterno(false);
         await confirmarFinalizacao();
       } else {
-        // Se for interno, apenas deixa a mensagem e não faz mais nada.
         console.log("Nenhuma ação de encerramento marcada em chamado interno. Apenas etiqueta e mensagem inseridas.");
       }
     }
@@ -856,33 +843,51 @@
   async function finalizarExterno(querAguardar) {
     const etiquetaExterno = window.ItemSelectorState.selectedItem.etiqueta_externo || "";
     document.getElementById("forward")?.click();
-    await new Promise(resolve => setTimeout(resolve, 50)); 
+    await new Promise(resolve => setTimeout(resolve, 300)); // Espera abrir o modal externo
 
     if (querAguardar) {
-      try { await clicarComTentativas('//lib-input-switch//button[@class="ant-switch"]', '//lib-input-switch//button[@class="ant-switch ant-switch-checked"]'); } catch (e) {}
+      try { await clicarComTentativas('//lib-input-switch//button[@class="ant-switch"]', '//lib-input-switch//button[@class="ant-switch ant-switch-checked"]', 20, 100); } catch (e) {}
     }
 
     await clicarComTentativas("//nz-select[@id='sector']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
     await esperarElemento("//ul[contains(@class, 'ant-select-dropdown-menu') and not(contains(@style, 'display: none'))]", 50, 20000);
     await esperarEClicar("//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'suporte externo')]", 50, 20000);
-    await new Promise(resolve => setTimeout(resolve, 50)); 
+    await new Promise(resolve => setTimeout(resolve, 150)); 
 
     await clicarComTentativas("//nz-select[@id='problem']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
     const problemInput = document.evaluate("//nz-select[@id='problem']//input", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    if (problemInput) { problemInput.value = etiquetaExterno; problemInput.dispatchEvent(new Event("input", { bubbles: true })); }
+    if (problemInput) { 
+        problemInput.value = etiquetaExterno; 
+        problemInput.dispatchEvent(new Event("input", { bubbles: true })); 
+    }
     await esperarEClicar(`//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${etiquetaExterno.toLowerCase()}')]`, 50, 20000);
     await esperarElemento(`//li[contains(@class, 'ant-select-selection__choice')]//div[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${etiquetaExterno.toLowerCase()}')]`, 50, 20000);
 
     const servicoExterno = window.ItemSelectorState.selectedItem.servico || "";
-    await esperarElementoHabilitado("//nz-select[@id='service']", 100, 20000);
-    await clicarComTentativas("//nz-select[@id='problem']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
-    await new Promise(resolve => setTimeout(resolve, 50));
-    await clicarComTentativas("//nz-select[@id='service']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
-    const serviceInput = document.evaluate("//nz-select[@id='service']//input", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    if (serviceInput) { serviceInput.value = servicoExterno; serviceInput.dispatchEvent(new Event("input", { bubbles: true })); }
-    await esperarEClicar(`//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`, 50, 10000);
-    await esperarElemento(`//div[contains(@class, 'ant-select-selection-selected-value') and contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`, 50, 10000);
+    if (servicoExterno) {
+        await esperarElementoHabilitado("//nz-select[@id='service']", 100, 20000);
+        await new Promise(resolve => setTimeout(resolve, 300)); // PAUSA CRUCIAL: Aguarda a lista de serviços carregar do servidor
+        
+        await clicarComTentativas("//nz-select[@id='service']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
+        
+        const serviceInput = document.evaluate("//nz-select[@id='service']//input", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (serviceInput) { 
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+            if (nativeInputValueSetter) {
+                nativeInputValueSetter.call(serviceInput, servicoExterno);
+            } else {
+                serviceInput.value = servicoExterno; 
+            }
+            serviceInput.dispatchEvent(new Event("input", { bubbles: true })); 
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 300)); // Espera a lista de serviços filtrar
+        
+        await esperarEClicar(`//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`, 50, 10000);
+        await esperarElemento(`//div[contains(@class, 'ant-select-selection-selected-value') and contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`, 50, 10000);
+    }
 
+    await new Promise(resolve => setTimeout(resolve, 200));
     document.querySelector('[data-testid="btn-Continuar"]')?.click();
   }
 
