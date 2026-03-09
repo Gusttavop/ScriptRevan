@@ -687,10 +687,12 @@
     if (document.getElementById("importantCheckbox")?.checked) document.getElementById("important")?.click();
     document.getElementById("send_button")?.click();
 
-    // Verificação de etiqueta mais robusta e case-insensitive
+    // CORREÇÃO AQUI: Verificação de etiqueta restrita apenas à div onde as etiquetas aplicadas ficam
     const desiredTag = window.ItemSelectorState.selectedItem?.etiqueta || "";
-    const allTags = Array.from(document.querySelectorAll('nz-tag, .ant-tag, .chip-label, span.tag-text, .tag'));
-    const tagExists = allTags.some(tag => tag.textContent.trim().toLowerCase() === desiredTag.toLowerCase());
+    
+    // Usando seletores mais específicos baseados na sua estrutura (div.tags) para evitar falsos positivos
+    const tagsAplicadas = Array.from(document.querySelectorAll('div.tags nz-tag, div.tags .ant-tag, div.tags span, nz-tag.editable-tag'));
+    const tagExists = tagsAplicadas.some(tag => tag.textContent.trim().toLowerCase() === desiredTag.toLowerCase());
 
     if (!tagExists && desiredTag) {
       console.log("Adicionando etiqueta...");
@@ -702,21 +704,21 @@
         window.tagResult = false;
       }
     } else {
-      console.log("Etiqueta já existe, pulando.");
+      console.log("Etiqueta já existe ou seletor não encontrou necessidade, pulando.");
       window.tagResult = true;
     }
 
     // --- LOOP DE SEGURANÇA: ESPERA A ETIQUETA APARECER ANTES DE CONTINUAR ---
     if (desiredTag) {
         let tagConfirmada = false;
-        // Tenta verificar 5 vezes a cada 100ms (antes era 300ms, agora é mais rápido)
         for (let i = 0; i < 5; i++) {
-            const currentTags = Array.from(document.querySelectorAll('nz-tag, .ant-tag, .chip-label, span.tag-text, .tag'));
+            // Usa o mesmo escopo restrito no loop de segurança
+            const currentTags = Array.from(document.querySelectorAll('div.tags nz-tag, div.tags .ant-tag, div.tags span'));
             if (currentTags.some(t => t.textContent.trim().toLowerCase() === desiredTag.toLowerCase())) {
                 tagConfirmada = true;
                 break;
             }
-            await new Promise(r => setTimeout(r, 100)); // Verifica mais rápido (100ms)
+            await new Promise(r => setTimeout(r, 100)); 
         }
         if (!tagConfirmada) console.warn("Aviso: Etiqueta pode não ter sido aplicada corretamente antes da finalização.");
     }
