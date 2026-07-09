@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Máscara de Atendimento (V1.4.9 - Turbo Seguro)
 // @namespace    http://tampermonkey.net/
-// @version      1.4.9
-// @description  Automação otimizada: reduz esperas desnecessárias mantendo a verificação de segurança da etiqueta.
+// @version      1.5.0
+// @description  Automação otimizada: reduz esperas desnecessárias mantendo a verificação de segurança da etiqueta. Com opção de forçar finalização interna.
 // @author       Gustavo
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
@@ -54,6 +54,7 @@
         speaker: elements.speakerInput.value || "",
         relationship: elements.relationshipSelect.querySelector("select").value || "",
         observations: elements.observationsTextarea.value || "",
+        isOpenExternalCall: !!elements.openExternalCallCheckbox.querySelector("input").checked,
         isExternalCall: !!elements.externalCallCheckbox.querySelector("input").checked,
         hasReminder: !!elements.reminderCheckbox.querySelector("input").checked,
         isImportant: !!elements.importantCheckbox.querySelector("input").checked,
@@ -154,6 +155,10 @@
     const specTitle = document.createElement("h3");
     specTitle.textContent = "Especificações do problema";
     specificationSection.appendChild(specTitle);
+
+    const openExternalCallCheckbox = createCheckbox("openExternalCallCheckbox", "Abrir chamado externo");
+    openExternalCallCheckbox.style.display = "none";
+    specificationSection.appendChild(openExternalCallCheckbox);
 
     const externalCallCheckbox = createCheckbox("externalCallCheckbox", "Aguardar chamado externo?");
     externalCallCheckbox.style.display = "none";
@@ -281,7 +286,7 @@
     document.body.appendChild(overlay);
     document.body.appendChild(editModal);
 
-    return { sidebar, searchInput, clearButton, dropdown, overlay, specificationSection, externalCallCheckbox, reminderCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sendButton, editButton, previewSection, internalLabelPreview, externalLabelPreview, finalMessagePreview, editModal, editMessageTextarea, saveEditButton, cancelEditButton, closeBtn };
+    return { sidebar, searchInput, clearButton, dropdown, overlay, specificationSection, openExternalCallCheckbox, externalCallCheckbox, reminderCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sendButton, editButton, previewSection, internalLabelPreview, externalLabelPreview, finalMessagePreview, editModal, editMessageTextarea, saveEditButton, cancelEditButton, closeBtn };
   }
 
   function createCheckbox(id, label) {
@@ -390,7 +395,7 @@
   function setupEventListeners() {
     const elements = window.ItemSelectorState.elements;
     if (!elements) return;
-    const { searchInput, clearButton, dropdown, overlay, externalCallCheckbox, reminderCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sidebar, editButton, closeBtn, saveEditButton, cancelEditButton } = elements;
+    const { searchInput, clearButton, dropdown, overlay, openExternalCallCheckbox, externalCallCheckbox, reminderCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sidebar, editButton, closeBtn, saveEditButton, cancelEditButton } = elements;
 
     const openSidebarBtn = document.getElementById("openSidebarBtn");
     if (openSidebarBtn) {
@@ -439,6 +444,12 @@
         dropdown.style.display = "none";
         searchInput.style.borderRadius = "10px";
       }
+    });
+
+    openExternalCallCheckbox.querySelector("input").addEventListener("change", e => {
+      // Oculta/Exibe a flag de "Aguardar chamado externo" dependendo da escolha de abrir externo ou não
+      externalCallCheckbox.style.display = e.target.checked ? "flex" : "none";
+      updatePreview();
     });
 
     externalCallCheckbox.querySelector("input").addEventListener("change", updatePreview);
@@ -579,18 +590,24 @@
     elements.specificationSection.style.display = "block";
 
     if (item.externo) {
-      elements.externalCallCheckbox.style.display = "block";
+      // Exibe e marca a opção de abrir chamado externo por padrão
+      elements.openExternalCallCheckbox.style.display = "flex";
+      const openExtCb = elements.openExternalCallCheckbox.querySelector("input");
+      if (openExtCb) openExtCb.checked = true;
+
+      elements.externalCallCheckbox.style.display = "flex";
       elements.reminderCheckbox.style.display = "none";
       const cb = elements.externalCallCheckbox.querySelector("input");
       if (cb) cb.checked = !!item.aguardar;
     } else {
+      elements.openExternalCallCheckbox.style.display = "none";
       elements.externalCallCheckbox.style.display = "none";
-      elements.reminderCheckbox.style.display = "block";
+      elements.reminderCheckbox.style.display = "flex";
       const cb = elements.reminderCheckbox.querySelector("input");
       if (cb) cb.checked = !!item.lembrete;
     }
 
-    elements.importantCheckbox.style.display = "block";
+    elements.importantCheckbox.style.display = "flex";
     elements.observationsTextarea.style.display = "block";
     elements.buttonContainer.style.display = "flex";
     elements.previewSection.style.display = "block";
@@ -626,6 +643,7 @@
     const elements = window.ItemSelectorState.elements;
     if (!elements) return;
     try {
+      elements.openExternalCallCheckbox.querySelector("input").checked = false;
       elements.externalCallCheckbox.querySelector("input").checked = false;
       elements.reminderCheckbox.querySelector("input").checked = false;
       elements.importantCheckbox.querySelector("input").checked = false;
@@ -687,10 +705,8 @@
     if (document.getElementById("importantCheckbox")?.checked) document.getElementById("important")?.click();
     document.getElementById("send_button")?.click();
 
-    // CORREÇÃO AQUI: Verificação de etiqueta restrita apenas à div onde as etiquetas aplicadas ficam
     const desiredTag = window.ItemSelectorState.selectedItem?.etiqueta || "";
     
-    // Usando seletores mais específicos baseados na sua estrutura (div.tags) para evitar falsos positivos
     const tagsAplicadas = Array.from(document.querySelectorAll('div.tags nz-tag, div.tags .ant-tag, div.tags span, nz-tag.editable-tag'));
     const tagExists = tagsAplicadas.some(tag => tag.textContent.trim().toLowerCase() === desiredTag.toLowerCase());
 
@@ -708,11 +724,10 @@
       window.tagResult = true;
     }
 
-    // --- LOOP DE SEGURANÇA: ESPERA A ETIQUETA APARECER ANTES DE CONTINUAR ---
+    // --- LOOP DE SEGURANÇA ---
     if (desiredTag) {
         let tagConfirmada = false;
         for (let i = 0; i < 5; i++) {
-            // Usa o mesmo escopo restrito no loop de segurança
             const currentTags = Array.from(document.querySelectorAll('div.tags nz-tag, div.tags .ant-tag, div.tags span'));
             if (currentTags.some(t => t.textContent.trim().toLowerCase() === desiredTag.toLowerCase())) {
                 tagConfirmada = true;
@@ -724,10 +739,14 @@
     }
     // -------------------------------------------------------------------------
 
-    if (window.ItemSelectorState.selectedItem?.externo) {
+    // VERIFICA SE DEVE MANDAR EXTERNO (se é um item externo E a checkbox está marcada)
+    const isExternalItem = window.ItemSelectorState.selectedItem?.externo;
+    const shouldOpenExternal = document.getElementById("openExternalCallCheckbox")?.checked;
+
+    if (isExternalItem && shouldOpenExternal) {
       await finalizarExterno();
       await confirmarFinalizacao();
-    } else if (document.getElementById("reminderCheckbox")?.checked) {
+    } else if (document.getElementById("reminderCheckbox")?.checked && !isExternalItem) {
       await adicionarLembrete();
     } else {
       await finalizarInterno();
@@ -735,7 +754,6 @@
     }
     console.log("Automação concluída.");
     
-    // Reseta a seleção e os campos para o próximo chamado
     window.ItemSelectorState.elements.clearButton.click();
   }
 
@@ -747,7 +765,6 @@
       const etiquetaInterna = window.ItemSelectorState.selectedItem.etiqueta;
       const tagInput = await esperarElemento("//*[@id='tags']/div/div/ul/li/input", 50, 5000);
 
-      // Verificação preventiva dentro do modal
       const labelsSelecionadas = Array.from(document.querySelectorAll('.ant-select-selection__choice__content, .ant-select-selection__choice'));
       if (labelsSelecionadas.some(el => el.textContent.includes(etiquetaInterna))) {
           console.log("Etiqueta já detectada dentro do modal (preventivo). Fechando.");
@@ -776,7 +793,6 @@
       }
       concluirButton.click();
       
-      // TEMPO REDUZIDO: de 500ms para 200ms após clicar em concluir
       await new Promise(r => setTimeout(r, 200));
       
       window.tagResult = true;
@@ -796,7 +812,7 @@
   async function finalizarExterno() {
     const etiquetaExterno = window.ItemSelectorState.selectedItem.etiqueta_externo || "";
     document.getElementById("forward")?.click();
-    await new Promise(resolve => setTimeout(resolve, 150)); // Reduzido de 300 para 150
+    await new Promise(resolve => setTimeout(resolve, 150)); 
 
     if (document.getElementById("externalCallCheckbox")?.checked) {
       try { await clicarComTentativas('//lib-input-switch//button[@class="ant-switch"]', '//lib-input-switch//button[@class="ant-switch ant-switch-checked"]'); } catch (e) {}
@@ -805,7 +821,7 @@
     await clicarComTentativas("//nz-select[@id='sector']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
     await esperarElemento("//ul[contains(@class, 'ant-select-dropdown-menu') and not(contains(@style, 'display: none'))]", 100, 20000);
     await esperarEClicar("//li[contains(@class, 'ant-select-dropdown-menu-item') and contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'suporte externo')]", 100, 20000);
-    await new Promise(resolve => setTimeout(resolve, 100)); // Reduzido de 200 para 100
+    await new Promise(resolve => setTimeout(resolve, 100)); 
 
     await clicarComTentativas("//nz-select[@id='problem']//input", "//ul[contains(@class, 'ant-select-dropdown-menu')]");
     const problemInput = document.evaluate("//nz-select[@id='problem']//input", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
@@ -837,7 +853,6 @@
   }
 
   async function finalizarInterno() {
-    // TEMPO OTIMIZADO: Reduzido de 800ms para 350ms
     await new Promise(resolve => setTimeout(resolve, 350)); 
     document.querySelector(".more")?.click();
     const finalizar = await esperarElemento("//nz-list-item[span[text()='Finalizar']]", 50, 5000);
@@ -891,9 +906,5 @@
       await new Promise(resolve => setTimeout(resolve, intervalo));
     }
     throw new Error(`Timeout habilitado: ${xpath}`);
-  }
-
-  async function esperarElementoClicavel(xpath, intervalo = 50, timeout = 10000) {
-    return await esperarElemento(xpath, intervalo, timeout);
   }
 })();
