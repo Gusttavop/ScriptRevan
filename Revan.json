@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Máscara de Atendimento (V1.4.9 - Turbo Seguro)
+// @name         Máscara de Atendimento (V1.7.0 - Turbo Seguro)
 // @namespace    http://tampermonkey.net/
-// @version      1.5.0
-// @description  Automação otimizada: reduz esperas desnecessárias mantendo a verificação de segurança da etiqueta. Com opção de forçar finalização interna.
+// @version      1.7.0
+// @description  Removido lembrete, mantida a opção de forçar finalização interna e desfeita a edição da etiqueta interna.
 // @author       Gustavo
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
@@ -56,7 +56,6 @@
         observations: elements.observationsTextarea.value || "",
         isOpenExternalCall: !!elements.openExternalCallCheckbox.querySelector("input").checked,
         isExternalCall: !!elements.externalCallCheckbox.querySelector("input").checked,
-        hasReminder: !!elements.reminderCheckbox.querySelector("input").checked,
         isImportant: !!elements.importantCheckbox.querySelector("input").checked,
         finalMessage: window.construirMensagemFinal(),
       };
@@ -163,10 +162,6 @@
     const externalCallCheckbox = createCheckbox("externalCallCheckbox", "Aguardar chamado externo?");
     externalCallCheckbox.style.display = "none";
     specificationSection.appendChild(externalCallCheckbox);
-
-    const reminderCheckbox = createCheckbox("reminderCheckbox", "Finalizar com lembrete");
-    reminderCheckbox.style.display = "none";
-    specificationSection.appendChild(reminderCheckbox);
 
     const importantCheckbox = createCheckbox("importantCheckbox", "Chamado importante");
     importantCheckbox.style.display = "none";
@@ -286,7 +281,7 @@
     document.body.appendChild(overlay);
     document.body.appendChild(editModal);
 
-    return { sidebar, searchInput, clearButton, dropdown, overlay, specificationSection, openExternalCallCheckbox, externalCallCheckbox, reminderCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sendButton, editButton, previewSection, internalLabelPreview, externalLabelPreview, finalMessagePreview, editModal, editMessageTextarea, saveEditButton, cancelEditButton, closeBtn };
+    return { sidebar, searchInput, clearButton, dropdown, overlay, specificationSection, openExternalCallCheckbox, externalCallCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sendButton, editButton, previewSection, internalLabelPreview, externalLabelPreview, finalMessagePreview, editModal, editMessageTextarea, saveEditButton, cancelEditButton, closeBtn };
   }
 
   function createCheckbox(id, label) {
@@ -395,7 +390,7 @@
   function setupEventListeners() {
     const elements = window.ItemSelectorState.elements;
     if (!elements) return;
-    const { searchInput, clearButton, dropdown, overlay, openExternalCallCheckbox, externalCallCheckbox, reminderCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sidebar, editButton, closeBtn, saveEditButton, cancelEditButton } = elements;
+    const { searchInput, clearButton, dropdown, overlay, openExternalCallCheckbox, externalCallCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sidebar, editButton, closeBtn, saveEditButton, cancelEditButton } = elements;
 
     const openSidebarBtn = document.getElementById("openSidebarBtn");
     if (openSidebarBtn) {
@@ -453,7 +448,6 @@
     });
 
     externalCallCheckbox.querySelector("input").addEventListener("change", updatePreview);
-    reminderCheckbox.querySelector("input").addEventListener("change", updatePreview);
     importantCheckbox.querySelector("input").addEventListener("change", updatePreview);
 
     holderCheckbox.querySelector("input").addEventListener("change", e => {
@@ -596,15 +590,11 @@
       if (openExtCb) openExtCb.checked = true;
 
       elements.externalCallCheckbox.style.display = "flex";
-      elements.reminderCheckbox.style.display = "none";
       const cb = elements.externalCallCheckbox.querySelector("input");
       if (cb) cb.checked = !!item.aguardar;
     } else {
       elements.openExternalCallCheckbox.style.display = "none";
       elements.externalCallCheckbox.style.display = "none";
-      elements.reminderCheckbox.style.display = "flex";
-      const cb = elements.reminderCheckbox.querySelector("input");
-      if (cb) cb.checked = !!item.lembrete;
     }
 
     elements.importantCheckbox.style.display = "flex";
@@ -645,7 +635,6 @@
     try {
       elements.openExternalCallCheckbox.querySelector("input").checked = false;
       elements.externalCallCheckbox.querySelector("input").checked = false;
-      elements.reminderCheckbox.querySelector("input").checked = false;
       elements.importantCheckbox.querySelector("input").checked = false;
       elements.holderCheckbox.querySelector("input").checked = true;
     } catch (e) {}
@@ -739,15 +728,12 @@
     }
     // -------------------------------------------------------------------------
 
-    // VERIFICA SE DEVE MANDAR EXTERNO (se é um item externo E a checkbox está marcada)
     const isExternalItem = window.ItemSelectorState.selectedItem?.externo;
     const shouldOpenExternal = document.getElementById("openExternalCallCheckbox")?.checked;
 
     if (isExternalItem && shouldOpenExternal) {
       await finalizarExterno();
       await confirmarFinalizacao();
-    } else if (document.getElementById("reminderCheckbox")?.checked && !isExternalItem) {
-      await adicionarLembrete();
     } else {
       await finalizarInterno();
       await confirmarFinalizacao();
@@ -840,16 +826,6 @@
     await esperarElemento(`//div[contains(@class, 'ant-select-selection-selected-value') and contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${servicoExterno.toLowerCase()}')]`, 100, 10000);
 
     document.querySelector('[data-testid="btn-Continuar"]')?.click();
-  }
-
-  async function adicionarLembrete() {
-    document.querySelector(".more")?.click();
-    const item = document.evaluate("//nz-list-item[span[text()='Adicionar lembrete']]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    item?.click();
-    const tituloInput = await esperarElemento("#titulo", 50, 5000);
-    if (tituloInput) { tituloInput.click(); tituloInput.value = "Fazer retorno"; tituloInput.dispatchEvent(new Event("input", { bubbles: true })); }
-    const concluir = document.evaluate("//span[contains(text(), 'Concluir')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    concluir?.click();
   }
 
   async function finalizarInterno() {
