@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Máscara de Atendimento (V1.7.0 - Turbo Seguro)
+// @name         Máscara de Atendimento (V1.9.0 - Turbo Seguro)
 // @namespace    http://tampermonkey.net/
-// @version      1.7.0
-// @description  Removido lembrete, mantida a opção de forçar finalização interna e desfeita a edição da etiqueta interna.
+// @version      1.9.0
+// @description  Ajuste inteligente: Desmarca "Finalizar chamado" automaticamente se "Abrir chamado externo" estiver ativo.
 // @author       Gustavo
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
@@ -56,7 +56,7 @@
         observations: elements.observationsTextarea.value || "",
         isOpenExternalCall: !!elements.openExternalCallCheckbox.querySelector("input").checked,
         isExternalCall: !!elements.externalCallCheckbox.querySelector("input").checked,
-        isImportant: !!elements.importantCheckbox.querySelector("input").checked,
+        autoFinalize: !!elements.finalizeCheckbox.querySelector("input").checked,
         finalMessage: window.construirMensagemFinal(),
       };
     },
@@ -163,9 +163,9 @@
     externalCallCheckbox.style.display = "none";
     specificationSection.appendChild(externalCallCheckbox);
 
-    const importantCheckbox = createCheckbox("importantCheckbox", "Chamado importante");
-    importantCheckbox.style.display = "none";
-    specificationSection.appendChild(importantCheckbox);
+    const finalizeCheckbox = createCheckbox("finalizeCheckbox", "Finalizar chamado");
+    finalizeCheckbox.style.display = "none";
+    specificationSection.appendChild(finalizeCheckbox);
 
     const observationsTextarea = document.createElement("textarea");
     observationsTextarea.id = "observationsTextarea";
@@ -281,7 +281,7 @@
     document.body.appendChild(overlay);
     document.body.appendChild(editModal);
 
-    return { sidebar, searchInput, clearButton, dropdown, overlay, specificationSection, openExternalCallCheckbox, externalCallCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sendButton, editButton, previewSection, internalLabelPreview, externalLabelPreview, finalMessagePreview, editModal, editMessageTextarea, saveEditButton, cancelEditButton, closeBtn };
+    return { sidebar, searchInput, clearButton, dropdown, overlay, specificationSection, openExternalCallCheckbox, externalCallCheckbox, finalizeCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sendButton, editButton, previewSection, internalLabelPreview, externalLabelPreview, finalMessagePreview, editModal, editMessageTextarea, saveEditButton, cancelEditButton, closeBtn };
   }
 
   function createCheckbox(id, label) {
@@ -390,7 +390,7 @@
   function setupEventListeners() {
     const elements = window.ItemSelectorState.elements;
     if (!elements) return;
-    const { searchInput, clearButton, dropdown, overlay, openExternalCallCheckbox, externalCallCheckbox, importantCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sidebar, editButton, closeBtn, saveEditButton, cancelEditButton } = elements;
+    const { searchInput, clearButton, dropdown, overlay, openExternalCallCheckbox, externalCallCheckbox, finalizeCheckbox, holderCheckbox, relationshipSelect, speakerInput, observationsTextarea, buttonContainer, sidebar, editButton, closeBtn, saveEditButton, cancelEditButton } = elements;
 
     const openSidebarBtn = document.getElementById("openSidebarBtn");
     if (openSidebarBtn) {
@@ -441,14 +441,20 @@
       }
     });
 
+    // CORREÇÃO INTELIGENTE: Alterna entre chamado externo e finalização interna
     openExternalCallCheckbox.querySelector("input").addEventListener("change", e => {
-      // Oculta/Exibe a flag de "Aguardar chamado externo" dependendo da escolha de abrir externo ou não
       externalCallCheckbox.style.display = e.target.checked ? "flex" : "none";
+      
+      // Se "Abrir chamado externo" estiver ativo, desmarca o "Finalizar chamado" automaticamente
+      const finCb = finalizeCheckbox.querySelector("input");
+      if (finCb) {
+        finCb.checked = !e.target.checked;
+      }
       updatePreview();
     });
 
     externalCallCheckbox.querySelector("input").addEventListener("change", updatePreview);
-    importantCheckbox.querySelector("input").addEventListener("change", updatePreview);
+    finalizeCheckbox.querySelector("input").addEventListener("change", updatePreview);
 
     holderCheckbox.querySelector("input").addEventListener("change", e => {
       speakerInput.style.display = e.target.checked ? "none" : "block";
@@ -584,7 +590,6 @@
     elements.specificationSection.style.display = "block";
 
     if (item.externo) {
-      // Exibe e marca a opção de abrir chamado externo por padrão
       elements.openExternalCallCheckbox.style.display = "flex";
       const openExtCb = elements.openExternalCallCheckbox.querySelector("input");
       if (openExtCb) openExtCb.checked = true;
@@ -592,12 +597,19 @@
       elements.externalCallCheckbox.style.display = "flex";
       const cb = elements.externalCallCheckbox.querySelector("input");
       if (cb) cb.checked = !!item.aguardar;
+
+      // CONFIGURAÇÃO SELECIONADA: Problema externo ativo -> desmarca finalizar chamado por padrão
+      elements.finalizeCheckbox.style.display = "flex";
+      elements.finalizeCheckbox.querySelector("input").checked = false;
     } else {
       elements.openExternalCallCheckbox.style.display = "none";
       elements.externalCallCheckbox.style.display = "none";
+      
+      // Problema interno ativo -> marca finalizar chamado por padrão
+      elements.finalizeCheckbox.style.display = "flex";
+      elements.finalizeCheckbox.querySelector("input").checked = true;
     }
 
-    elements.importantCheckbox.style.display = "flex";
     elements.observationsTextarea.style.display = "block";
     elements.buttonContainer.style.display = "flex";
     elements.previewSection.style.display = "block";
@@ -635,7 +647,7 @@
     try {
       elements.openExternalCallCheckbox.querySelector("input").checked = false;
       elements.externalCallCheckbox.querySelector("input").checked = false;
-      elements.importantCheckbox.querySelector("input").checked = false;
+      elements.finalizeCheckbox.querySelector("input").checked = true;
       elements.holderCheckbox.querySelector("input").checked = true;
     } catch (e) {}
     elements.speakerInput.value = "";
@@ -679,7 +691,7 @@
       } catch (error) { }
   }
 
-  async function executarAutomacao() {
+  async function ejecutarAutomacao() {
     closeSidebar();
     window.tagResult = false;
     if (document.getElementById("upload")) document.getElementById("toggle_upload")?.click();
@@ -691,7 +703,6 @@
       textArea.dispatchEvent(new Event("input", { bubbles: true }));
     }
 
-    if (document.getElementById("importantCheckbox")?.checked) document.getElementById("important")?.click();
     document.getElementById("send_button")?.click();
 
     const desiredTag = window.ItemSelectorState.selectedItem?.etiqueta || "";
@@ -730,15 +741,20 @@
 
     const isExternalItem = window.ItemSelectorState.selectedItem?.externo;
     const shouldOpenExternal = document.getElementById("openExternalCallCheckbox")?.checked;
+    const autoFinalize = document.getElementById("finalizeCheckbox")?.checked;
 
-    if (isExternalItem && shouldOpenExternal) {
-      await finalizarExterno();
-      await confirmarFinalizacao();
+    if (autoFinalize) {
+      if (isExternalItem && shouldOpenExternal) {
+        await finalizarExterno();
+        await confirmarFinalizacao();
+      } else {
+        await finalizarInterno();
+        await confirmarFinalizacao();
+      }
+      console.log("Automação concluída (com finalização).");
     } else {
-      await finalizarInterno();
-      await confirmarFinalizacao();
+      console.log("Automação concluída (apenas preenchimento da mensagem e etiqueta). Finalização manual.");
     }
-    console.log("Automação concluída.");
     
     window.ItemSelectorState.elements.clearButton.click();
   }
