@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Máscara de Atendimento (V1.9.0 - Turbo Seguro)
+// @name         Máscara de Atendimento (V1.9.2 - Turbo Seguro)
 // @namespace    http://tampermonkey.net/
-// @version      1.9.0
-// @description  Ajuste inteligente: Desmarca "Finalizar chamado" automaticamente se "Abrir chamado externo" estiver ativo.
+// @version      1.9.2
+// @description  Correção do fluxo externo: O script agora envia corretamente para o externo quando ativado, mesmo com a opção "Finalizar chamado" desmarcada.
 // @author       Gustavo
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
@@ -441,7 +441,7 @@
       }
     });
 
-    // CORREÇÃO INTELIGENTE: Alterna entre chamado externo e finalização interna
+    // Alterna entre chamado externo e finalização interna
     openExternalCallCheckbox.querySelector("input").addEventListener("change", e => {
       externalCallCheckbox.style.display = e.target.checked ? "flex" : "none";
       
@@ -598,7 +598,7 @@
       const cb = elements.externalCallCheckbox.querySelector("input");
       if (cb) cb.checked = !!item.aguardar;
 
-      // CONFIGURAÇÃO SELECIONADA: Problema externo ativo -> desmarca finalizar chamado por padrão
+      // Problema externo ativo -> desmarca finalizar chamado por padrão
       elements.finalizeCheckbox.style.display = "flex";
       elements.finalizeCheckbox.querySelector("input").checked = false;
     } else {
@@ -691,7 +691,7 @@
       } catch (error) { }
   }
 
-  async function ejecutarAutomacao() {
+  async function executarAutomacao() {
     closeSidebar();
     window.tagResult = false;
     if (document.getElementById("upload")) document.getElementById("toggle_upload")?.click();
@@ -743,15 +743,15 @@
     const shouldOpenExternal = document.getElementById("openExternalCallCheckbox")?.checked;
     const autoFinalize = document.getElementById("finalizeCheckbox")?.checked;
 
-    if (autoFinalize) {
-      if (isExternalItem && shouldOpenExternal) {
-        await finalizarExterno();
-        await confirmarFinalizacao();
-      } else {
-        await finalizarInterno();
-        await confirmarFinalizacao();
-      }
-      console.log("Automação concluída (com finalização).");
+    // Lógica corrigida: Verifica o fluxo externo independentemente de 'autoFinalize' estar marcado
+    if (isExternalItem && shouldOpenExternal) {
+      await finalizarExterno();
+      await confirmarFinalizacao();
+      console.log("Automação concluída (encaminhado externo).");
+    } else if (autoFinalize) {
+      await finalizarInterno();
+      await confirmarFinalizacao();
+      console.log("Automação concluída (finalizado interno).");
     } else {
       console.log("Automação concluída (apenas preenchimento da mensagem e etiqueta). Finalização manual.");
     }
