@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Máscara de Atendimento (V1.9.2 - Turbo Seguro)
+// @name         Máscara de Atendimento (V1.9.4 - Turbo Seguro)
 // @namespace    http://tampermonkey.net/
-// @version      1.9.2
-// @description  Correção do fluxo externo: O script agora envia corretamente para o externo quando ativado, mesmo com a opção "Finalizar chamado" desmarcada.
+// @version      1.9.4
+// @description  Correção do fluxo externo: O script agora envia corretamente para o externo quando ativado, e alterna corretamente as seleções de finalizar e abrir externo.
 // @author       Gustavo
 // @match        https://revan-atendimento.brisanet.net.br/*
 // @grant        GM_addStyle
@@ -140,7 +140,7 @@
     clearButton.style.display = "none";
     inputWrapper.appendChild(searchInput);
     inputWrapper.appendChild(clearButton);
-    searchContainer.appendChild(inputWrapper);
+    searchContainer.appendChild(inputWrapper); // Linha corrigida
     sidebar.appendChild(searchContainer);
 
     const dropdown = document.createElement("ul");
@@ -454,7 +454,17 @@
     });
 
     externalCallCheckbox.querySelector("input").addEventListener("change", updatePreview);
-    finalizeCheckbox.querySelector("input").addEventListener("change", updatePreview);
+    
+    // NOVO: Alterna e desmarca "Abrir externo" caso "Finalizar" seja ativado
+    finalizeCheckbox.querySelector("input").addEventListener("change", e => {
+      const extCb = openExternalCallCheckbox.querySelector("input");
+      if (extCb) {
+        extCb.checked = !e.target.checked;
+        // Ajusta a visibilidade do 'Aguardar chamado externo' baseado no novo estado do checkbox externo
+        externalCallCheckbox.style.display = extCb.checked ? "flex" : "none";
+      }
+      updatePreview();
+    });
 
     holderCheckbox.querySelector("input").addEventListener("change", e => {
       speakerInput.style.display = e.target.checked ? "none" : "block";
@@ -743,7 +753,6 @@
     const shouldOpenExternal = document.getElementById("openExternalCallCheckbox")?.checked;
     const autoFinalize = document.getElementById("finalizeCheckbox")?.checked;
 
-    // Lógica corrigida: Verifica o fluxo externo independentemente de 'autoFinalize' estar marcado
     if (isExternalItem && shouldOpenExternal) {
       await finalizarExterno();
       await confirmarFinalizacao();
